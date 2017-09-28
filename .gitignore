@@ -103,6 +103,7 @@ ENV/
 # Other folders to ignore.
 data/
 .idea/
+index/
 
 # Files not to ignore.
 !data/readme.txt

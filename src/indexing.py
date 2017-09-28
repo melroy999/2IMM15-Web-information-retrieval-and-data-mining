@@ -3,10 +3,11 @@
 # TODO For each document, add indices for term occurrence
 
 from collections import defaultdict, Counter
+from math import log10
 from string import punctuation
 from time import time
-from math import log10
-from data import import_papers, import_authors
+
+from retrieval.data import import_papers, import_authors
 
 normalization_table = str.maketrans({key: None for key in punctuation})
 
@@ -14,7 +15,6 @@ normalization_table = str.maketrans({key: None for key in punctuation})
 def tokenize(content):
     # return [word.strip(string.punctuation) for word in content.split()]
     return content.split()
-
 
 def normalize(content):
     # Remove all special symbols.

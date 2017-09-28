@@ -1,7 +1,7 @@
 import sqlite3
 
 # The location of the database.sqlite file, used when accessing the database.
-sqlite_file = "../data/database.sqlite"
+sqlite_file = "../../data/database.sqlite"
 
 
 class Author:
