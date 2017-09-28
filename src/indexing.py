@@ -1,56 +1,88 @@
 # TODO Term normalisation
 # TODO Mapping from terms to documents in which the term occurs
 # TODO For each document, add indices for term occurrence
-import string
-from collections import defaultdict, OrderedDict
 
-import data as data
+from collections import defaultdict, Counter
+from string import punctuation
+from time import time
+from math import log10
+from data import import_papers, import_authors
 
-normalization_table = str.maketrans({key: None for key in string.punctuation})
+normalization_table = str.maketrans({key: None for key in punctuation})
+
 
 def tokenize(content):
     # return [word.strip(string.punctuation) for word in content.split()]
     return content.split()
 
 
-def normalize(term):
-    # First remove all punctuation.
-    term = term.translate(normalization_table)
+def normalize(content):
+    # Remove all special symbols.
+    terms = [term.translate(normalization_table) for term in tokens]
 
     # Now make it lower case.
-    return term.lower()
+    return map(str.lower, terms)
 
 
 # Import the list of papers and authors.
-papers = data.import_papers()
-authors = data.import_authors()
+papers = import_papers()
+paper_ids = [paper.id for paper in papers]
+authors = import_authors()
+author_ids = [author.id for author in authors]
 
-# We will keep a dictionary between terms and postings.
-postings = defaultdict(dict)
+# Performance analysis counter.
+start = time()
+
+# Print the time taken.
+print("Setup: ", time() - start)
+
+# Performance analysis counter.
+start = time()
+
+# The data we gather about terms.
+data = {}
+
+
+class TermIndex:
+    def __init__(self):
+        self.cf = 0
+        self.df = 0
+        self.idf = 0
+        self.papers_tf = defaultdict(int)
+        self.papers_wf = defaultdict(int)
+
 
 # Walk over all the papers and create the index tables.
 for paper in papers:
-    print(paper.id)
+    # Tokenize the paper.
+    tokens = tokenize(paper.paper_text)
 
-    # Tokenize the contents of the papers, and normalize the terms.
-    tokens = [normalize(term) for term in tokenize(paper.paper_text)]
+    # Normalize the terms.
+    terms = normalize(tokens)
 
-    # Update the list of postings by adding the id of the paper.
-    for i in range(0, len(tokens)):
-        term = tokens[i]
+    # Count the amount of tokens.
+    counter = Counter(terms)
 
-        # Skip if it is empty.
-        if term == '':
-            continue
+    # Now, use the values in the counter to update the data.
+    for term in counter.keys():
+        # Create the data item if it does not exist yet.
+        if term not in data:
+            data[term] = TermIndex()
 
-        # get the dict by key, having a default value of an empty dict.
-        position_mapping = postings.get(term, defaultdict(list))
+        # Update the collection frequency.
+        data[term].cf += counter[term]
 
-        # Now, for each of the terms, append the positional index of the term.
-        position_mapping[paper.id].append(i)
+        # Increment the document frequency.
+        data[term].df += 1
 
-        # Add the dict to the postings mapping.
-        postings[term] = position_mapping
+        # Update the paper frequency.
+        data[term].papers_tf[paper.id] = counter[term]
+        data[term].papers_wf[paper.id] = 1 + log10(counter[term])
 
-# Created a dictionary in which the keys are sorted alphabetically.
-ordered_postings = OrderedDict(sorted(postings.items(), key=lambda t : t[0]))
+
+# Print the time taken.
+print("Running: ", time() - start)
+print("The frequency: " + str(data["the"].cf))
+print("Of frequency: " + str(data["of"].cf))
+print("The frequency paper 1: " + str(data["the"].papers_tf[1]))
+print("Of frequency paper 1: " + str(data["of"].papers_tf[1]))
