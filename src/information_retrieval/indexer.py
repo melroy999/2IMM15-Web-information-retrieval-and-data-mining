@@ -5,6 +5,7 @@ import time
 
 import math
 
+from information_retrieval.analyzer import cosine_similarity
 from information_retrieval.normalizer import pre_normalization, post_normalization
 from information_retrieval.tokenizer import tokenize
 from import_data import database
@@ -20,7 +21,7 @@ def index_papers(papers):
     with Pool(4) as pool:
         # Schedule the papers to be processed by the pool, and save the term frequency data.
         papers_term_frequency_data = pool.map(process_paper, papers)
-        papers_term_frequency_data = {papers[i].id: defaultdict(lambda: 0, papers_term_frequency_data[i]) for i in range(0, len(papers))}
+        papers_term_frequency_data = {papers[i].id: defaultdict(lambda: (0, 0, 0), papers_term_frequency_data[i]) for i in range(0, len(papers))}
 
     # Generate a list of all terms used in the papers.
     terms = set().union(*[list(data) for data in papers_term_frequency_data.values()])
@@ -42,10 +43,16 @@ def index_papers(papers):
     return global_term_frequency_data, papers_term_frequency_data
 
 
-# Generate the index of the paper object.
+# Generate the index of the paper.
 def process_paper(paper):
+    # Process the text of the paper.
+    return process_text(paper.paper_text)
+
+
+# Generate the index of the text.
+def process_text(text):
     # First, remove all punctuation.
-    text = pre_normalization(paper.paper_text)
+    text = pre_normalization(text)
 
     # Next, tokenize the paper's contents.
     tokens = tokenize(text)
@@ -62,8 +69,29 @@ def process_paper(paper):
 
 # Gather frequency data using the term frequency dictionary.
 def generate_term_frequency_data(term_frequencies):
+    # Calculate the vector length such that we can normalize it.
+    length = math.sqrt(sum(x * x for x in term_frequencies.values()))
+
     # Pre-calculate the weighted frequency of each term, and store it as a tuple together with the term frequency.
-    return {term: (frequency, 1 + math.log2(frequency)) for term, frequency in term_frequencies.items()}
+    return {term: (frequency, 1 + math.log2(frequency), frequency / length) for term, frequency in term_frequencies.items()}
+
+
+########################################################################################################################
+# Functions used to print scoring results
+########################################################################################################################
+
+def print_scoring_results(id_to_imported_paper, query, scoring, top_x=10):
+    print()
+    print("=" * 124)
+    print("query = \"" + query + "\"")
+    print(min(len(scoring), top_x), "of", len(scoring), "results:")
+
+    for i in range(0, min(len(scoring), top_x)):
+        paper_id, score = scoring[i]
+        print(str(i + 1) + ".\t", id_to_imported_paper[paper_id].title, score)
+
+    print("=" * 124)
+
 
 ########################################################################################################################
 # Main
@@ -73,6 +101,9 @@ def generate_term_frequency_data(term_frequencies):
 if __name__ == '__main__':
     # Load the papers.
     imported_papers = database.import_papers()
+
+    # Connect the paper id to the paper.
+    id_to_imported_paper = {paper.id: paper for paper in imported_papers}
 
     start = time.time()
 
@@ -87,3 +118,13 @@ if __name__ == '__main__':
     print("Neural frequency in paper 1: " + str(term_frequency_data[1]["neural"]))
     print("Neural frequency: " + str(collection_frequency_data["neural"]))
     print(len(collection_frequency_data))
+
+    query = "This is not a very complicated query query query! chicken"
+    query_term_frequency = process_text(query)
+    scores = cosine_similarity(collection_frequency_data, term_frequency_data, query_term_frequency)
+    print_scoring_results(id_to_imported_paper, query, scores)
+
+    query = "KWJWIWIjjaashoaishughqwfhqwphqfwbqfwbipiqwf"
+    query_term_frequency = process_text(query)
+    scores = cosine_similarity(collection_frequency_data, term_frequency_data, query_term_frequency)
+    print_scoring_results(id_to_imported_paper, query, scores)
