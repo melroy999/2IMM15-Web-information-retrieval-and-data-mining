@@ -1,11 +1,11 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from multiprocessing.pool import Pool
 
 import time
 
 import math
 
-from information_retrieval.normalizer import remove_punctuation, normalize
+from information_retrieval.normalizer import pre_normalization, post_normalization
 from information_retrieval.tokenizer import tokenize
 from import_data import database
 
@@ -20,7 +20,7 @@ def index_papers(papers):
     with Pool(4) as pool:
         # Schedule the papers to be processed by the pool, and save the term frequency data.
         papers_term_frequency_data = pool.map(process_paper, papers)
-        papers_term_frequency_data = {papers[i].id: papers_term_frequency_data[i] for i in range(0, len(papers))}
+        papers_term_frequency_data = {papers[i].id: defaultdict(lambda: 0, papers_term_frequency_data[i]) for i in range(0, len(papers))}
 
     # Generate a list of all terms used in the papers.
     terms = set().union(*[list(data) for data in papers_term_frequency_data.values()])
@@ -36,19 +36,22 @@ def index_papers(papers):
     for term, (x, y, z) in global_term_frequency_data.items():
         global_term_frequency_data[term] = (x, y, math.log2(len(papers) / y))
 
+    # Make de dicts return 0 on default.
+    global_term_frequency_data = defaultdict(lambda: 0, global_term_frequency_data)
+
     return global_term_frequency_data, papers_term_frequency_data
 
 
 # Generate the index of the paper object.
 def process_paper(paper):
     # First, remove all punctuation.
-    text = remove_punctuation(paper.paper_text)
+    text = pre_normalization(paper.paper_text)
 
     # Next, tokenize the paper's contents.
     tokens = tokenize(text)
 
     # Now, do the post processing normalization.
-    terms = normalize(tokens)
+    terms = post_normalization(tokens)
 
     # Create the term frequency table and the weighted term frequency table.
     term_frequencies = dict(Counter(terms))
@@ -77,3 +80,10 @@ if __name__ == '__main__':
     collection_frequency_data, term_frequency_data = index_papers(imported_papers)
 
     print("Indexing time: ", time.time() - start)
+    print("The frequency in paper 1: " + str(term_frequency_data[1]["the"]))
+    print("Of frequency in paper 1: " + str(term_frequency_data[1]["of"]))
+    print("The frequency: " + str(collection_frequency_data["the"]))
+    print("Of frequency: " + str(collection_frequency_data["of"]))
+    print("Neural frequency in paper 1: " + str(term_frequency_data[1]["neural"]))
+    print("Neural frequency: " + str(collection_frequency_data["neural"]))
+    print(len(collection_frequency_data))
