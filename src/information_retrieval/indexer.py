@@ -5,7 +5,7 @@ import time
 
 import math
 
-from information_retrieval.analyzer import cosine_similarity
+from information_retrieval.analyzer import cosine_similarity_tf, cosine_similarity_tf_idf
 from information_retrieval.normalizer import pre_normalization, post_normalization
 from information_retrieval.tokenizer import tokenize
 from import_data import database
@@ -15,13 +15,16 @@ from import_data import database
 # Functions used during the processing of papers.
 ########################################################################################################################
 
+# Structure for the papers_term_frequency_data: (term: (tf, wf, normalized_tf, normalized_wf))
+# Structure for the global_term_frequency_data: (term: (cf, df, idf))
+
 # Index all the papers that have been provided in the papers list.
 def index_papers(papers):
     # Create a pool with four processes, so that we have at most 50% cpu utilization.
     with Pool(4) as pool:
         # Schedule the papers to be processed by the pool, and save the term frequency data.
         papers_term_frequency_data = pool.map(process_paper, papers)
-        papers_term_frequency_data = {papers[i].id: defaultdict(lambda: (0, 0, 0), papers_term_frequency_data[i]) for i in range(0, len(papers))}
+        papers_term_frequency_data = {papers[i].id: defaultdict(lambda: (0, 0, 0, 0), papers_term_frequency_data[i]) for i in range(0, len(papers))}
 
     # Generate a list of all terms used in the papers.
     terms = set().union(*[list(data) for data in papers_term_frequency_data.values()])
@@ -38,7 +41,7 @@ def index_papers(papers):
         global_term_frequency_data[term] = (x, y, math.log2(len(papers) / y))
 
     # Make de dicts return 0 on default.
-    global_term_frequency_data = defaultdict(lambda: 0, global_term_frequency_data)
+    global_term_frequency_data = defaultdict(lambda: (0, 0, 0), global_term_frequency_data)
 
     return global_term_frequency_data, papers_term_frequency_data
 
@@ -69,11 +72,15 @@ def process_text(text):
 
 # Gather frequency data using the term frequency dictionary.
 def generate_term_frequency_data(term_frequencies):
-    # Calculate the vector length such that we can normalize it.
-    length = math.sqrt(sum(x * x for x in term_frequencies.values()))
+    # Calculate an intermediary result for the tf and wf values, and normalize after.
+    result = {term: (frequency, 1 + math.log2(frequency), 0, 0) for term, frequency in term_frequencies.items()}
 
-    # Pre-calculate the weighted frequency of each term, and store it as a tuple together with the term frequency.
-    return {term: (frequency, 1 + math.log2(frequency), frequency / length) for term, frequency in term_frequencies.items()}
+    # Calculate the vector length such that we can normalize it.
+    length = math.sqrt(sum(x * x for term, (x, _, _, _) in result.items()))
+    log_length = math.sqrt(sum(x * x for term, (_, x, _, _) in result.items()))
+
+    # Normalize the vector.
+    return {term: (tf, wf, tf / length, wf / log_length) for term, (tf, wf, _, _) in result.items()}
 
 
 ########################################################################################################################
@@ -119,12 +126,28 @@ if __name__ == '__main__':
     print("Neural frequency: " + str(collection_frequency_data["neural"]))
     print(len(collection_frequency_data))
 
+    print()
+    print("TF:")
+
     query = "This is not a very complicated query query query! chicken"
     query_term_frequency = process_text(query)
-    scores = cosine_similarity(collection_frequency_data, term_frequency_data, query_term_frequency)
+    scores = cosine_similarity_tf(collection_frequency_data, term_frequency_data, query_term_frequency)
     print_scoring_results(id_to_imported_paper, query, scores)
 
     query = "KWJWIWIjjaashoaishughqwfhqwphqfwbqfwbipiqwf"
     query_term_frequency = process_text(query)
-    scores = cosine_similarity(collection_frequency_data, term_frequency_data, query_term_frequency)
+    scores = cosine_similarity_tf(collection_frequency_data, term_frequency_data, query_term_frequency)
+    print_scoring_results(id_to_imported_paper, query, scores)
+
+    print()
+    print("TF.IDF:")
+
+    query = "This is not a very complicated query query query! chicken"
+    query_term_frequency = process_text(query)
+    scores = cosine_similarity_tf_idf(collection_frequency_data, term_frequency_data, query_term_frequency)
+    print_scoring_results(id_to_imported_paper, query, scores)
+
+    query = "KWJWIWIjjaashoaishughqwfhqwphqfwbqfwbipiqwf"
+    query_term_frequency = process_text(query)
+    scores = cosine_similarity_tf_idf(collection_frequency_data, term_frequency_data, query_term_frequency)
     print_scoring_results(id_to_imported_paper, query, scores)
