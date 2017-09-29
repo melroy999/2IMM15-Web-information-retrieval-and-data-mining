@@ -52,7 +52,7 @@ class TermIndex:
         self.papers_wf = defaultdict(int)
 
 
-# Walk over all the papers and create the index tables.
+# Walk over all the papers and create the information_retrieval tables.
 for paper in papers:
     # Tokenize the paper.
     tokens = tokenize(paper.paper_text)
