@@ -153,10 +153,7 @@ def print_scoring_results(query, scoring, _selected_terms, _query_scores, top_x=
     print("=" * 124)
 
 
-if __name__ == '__main__':
-    # Initialize the indexer.
-    indexer.init()
-
+def analyzer_examples():
     # Calculate the cosine similarity.
     scores, selected_terms, query_scores = query_cosine_similarity_tf("chicken", "paper_text")
 
@@ -204,3 +201,9 @@ if __name__ == '__main__':
 
     # Print the results.
     print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
+
+
+if __name__ == '__main__':
+    # Initialize the indexer.
+    indexer.init()
+    analyzer_examples()

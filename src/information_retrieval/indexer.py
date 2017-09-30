@@ -9,7 +9,6 @@ from information_retrieval.normalizer import pre_normalization, post_normalizati
 from information_retrieval.tokenizer import tokenize
 from import_data import database
 
-
 ########################################################################################################################
 # Functions used during the processing of papers.
 ########################################################################################################################
@@ -47,7 +46,7 @@ def index_papers(papers):
     for field in paper_fields:
         # Here we keep the list of terms of the title, abstract and paper_text separately as a dictionary.
         terms[field] = set().union(*[list(fields[field]) for paper_id, fields in paper_ft_data.items()])
-        print(field, len(terms[field]))
+        print("Encountered " + str(len(terms[field])) + " unique terms for field \"" + field + "\".")
 
     # Calculate the collection frequency and the document frequency of every term, and safe these as a tuple.
     _global_idf_data = {}
@@ -78,8 +77,8 @@ def index_papers(papers):
             data = paper_ft_data[paper.id][field]
 
             # We first gather the lengths of the different value types.
-            tf_idf_length = math.sqrt(sum([x[2]**2 for x in data.values()]))
-            wf_idf_length = math.sqrt(sum([x[3]**2 for x in data.values()]))
+            tf_idf_length = math.sqrt(sum([x[2] ** 2 for x in data.values()]))
+            wf_idf_length = math.sqrt(sum([x[3] ** 2 for x in data.values()]))
 
             # Now normalize.
             for term, (tf, wf, tf_idf, wf_idf, n_tf, n_wf, _, _) in data.items():
@@ -125,11 +124,12 @@ def process_text(text):
 # Gather frequency data using the term frequency dictionary.
 def generate_term_frequency_data(term_frequencies):
     # Calculate an intermediary result for the tf and wf values.
-    data = {term: (frequency, 1 + math.log2(frequency), 0, 0, 0, 0, 0, 0) for term, frequency in term_frequencies.items()}
+    data = {term: (frequency, 1 + math.log2(frequency), 0, 0, 0, 0, 0, 0) for term, frequency in
+            term_frequencies.items()}
 
     # Calculate the length of the vector and adjust.
-    tf_length = math.sqrt(sum([x[0]**2 for x in data.values()]))
-    wf_length = math.sqrt(sum([x[1]**2 for x in data.values()]))
+    tf_length = math.sqrt(sum([x[0] ** 2 for x in data.values()]))
+    wf_length = math.sqrt(sum([x[1] ** 2 for x in data.values()]))
 
     # Now normalize.
     for term, (tf, wf, _, _, _, _, _, _) in data.items():
