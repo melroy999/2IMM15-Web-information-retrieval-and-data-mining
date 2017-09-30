@@ -94,7 +94,7 @@ def index_papers(papers):
                     wf_idf / wf_idf_length
                 )
 
-    return _global_idf_data, paper_ft_data
+    return paper_ft_data
 
 
 # Generate the index of the paper.
@@ -152,7 +152,6 @@ def generate_term_frequency_data(term_frequencies):
 ########################################################################################################################
 
 # The global variables we will be using between files.
-global_idf_data = None
 paper_tf_data = None
 
 
@@ -165,9 +164,8 @@ def init():
     start = time.time()
 
     # Index the imported papers.
-    global global_idf_data
     global paper_tf_data
-    global_idf_data, paper_tf_data = index_papers(database.papers)
+    paper_tf_data = index_papers(database.papers)
 
     # Report the indexing time.
     print("Indexing took", time.time() - start, "seconds.")

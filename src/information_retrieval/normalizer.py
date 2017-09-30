@@ -1,12 +1,16 @@
 import string
 
 # Used to remove punctuation.
-from information_retrieval.lemmatizer import execute_nltk_wordnet_lemmatizer
+from information_retrieval.lemmatizer import *
+from information_retrieval.stemmer import *
 
 
 # A table that will contain punctuation to be removed.
 punctuation_removal_table = str.maketrans({key: None for key in string.punctuation})
 
+# The default stemming/lemmatizer.
+default_stemming_mode = execute_porter_stemmer
+#default_stemming_mode = execute_nltk_wordnet_lemmatizer
 
 # Remove punctuation in the given text.
 def pre_normalization(text):
@@ -15,7 +19,7 @@ def pre_normalization(text):
 
 
 # Normalize the given list of terms.
-def post_normalization(terms, normalizer=lambda x: execute_nltk_wordnet_lemmatizer(x), use_stopwords=True):
+def post_normalization(terms, normalizer=lambda x: default_stemming_mode(x), use_stopwords=True):
     return [normalizer(term) for term in terms if use_stopwords and not english_stopwords.__contains__(term)]
 
 

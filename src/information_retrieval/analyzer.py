@@ -73,47 +73,70 @@ def query_cosine_similarity_template(query, field, measure_number):
 def query_cosine_similarity_tf(query, field):
     return query_cosine_similarity_template(query, field, 4)
 
-    # # First process the query.
-    # query_ft_data = indexer.process_text(query)
-    # query_ft_scores = {term: value[4] for term, value in query_ft_data.items()}
-    #
-    # # We will keep the score of all of the papers.
-    # _scores = {}
-    # _selected_terms = {}
-    #
-    # # We have multiple papers. Iterate over all of them
-    # for paper_id, paper_tf in indexer.paper_tf_data.items():
-    #     # Extract the tf values from the paper results.
-    #     paper_ft_scores = {term: value[4] for term, value in paper_tf[field].items()}
-    #
-    #     # Report on the cosine similarity.
-    #     score, terms = cosine_similarity(query_ft_scores, paper_ft_scores)
-    #
-    #     # Save both the score and the subset of the paper term dictionary.
-    #     _scores[paper_id] = score
-    #     _selected_terms[paper_id] = {term: paper_ft_scores[term] for term in terms}
-    #
-    # # Remove scores that are zero.
-    # _scores = {paper_id: value for paper_id, value in _scores.items() if not math.isclose(value, 0.0, abs_tol=1e-19)}
-    #
-    # # Sort the scores, and return.
-    # return sorted(_scores.items(), key=lambda x: x[1], reverse=True), _selected_terms, query_ft_scores
-
 
 # Calculate the cosine similarity using the tf measure.
 def query_cosine_similarity_wf(query, field):
     return query_cosine_similarity_template(query, field, 5)
 
+
 ########################################################################################################################
 # Functions for document to document scoring
 ########################################################################################################################
+
+
+# Calculate the cosine similarity for a given measure type.
+def document_cosine_similarity_template(paper_id, field, measure_number):
+    # First process the query.
+    query_ft_scores = {term: value[measure_number] for term, value in indexer.paper_tf_data[paper_id][field].items()}
+
+    # We will keep the score of all of the papers.
+    _scores = {}
+    _selected_terms = {}
+
+    # We have multiple papers. Iterate over all of them
+    for paper_id, paper_tf in indexer.paper_tf_data.items():
+        # Extract the tf values from the paper results.
+        paper_ft_scores = {term: value[measure_number] for term, value in paper_tf[field].items()}
+
+        # Report on the cosine similarity.
+        score, terms = cosine_similarity(query_ft_scores, paper_ft_scores)
+
+        # Save both the score and the subset of the paper term dictionary.
+        _scores[paper_id] = score
+        _selected_terms[paper_id] = {term: paper_ft_scores[term] for term in terms}
+
+    # Remove scores that are zero.
+    _scores = {paper_id: value for paper_id, value in _scores.items() if not math.isclose(value, 0.0, abs_tol=1e-19)}
+
+    # Sort the scores, and return.
+    return sorted(_scores.items(), key=lambda x: x[1], reverse=True), _selected_terms, query_ft_scores
+
+
+# Calculate the cosine similarity using the tf measure.
+def document_cosine_similarity_tf(paper_id, field):
+    return document_cosine_similarity_template(paper_id, field, 4)
+
+
+# Calculate the cosine similarity using the tf measure.
+def document_cosine_similarity_wf(paper_id, field):
+    return document_cosine_similarity_template(paper_id, field, 5)
+
+
+# Calculate the cosine similarity using the tf measure.
+def document_cosine_similarity_tf_idf(paper_id, field):
+    return document_cosine_similarity_template(paper_id, field, 6)
+
+
+# Calculate the cosine similarity using the tf measure.
+def document_cosine_similarity_wf_idf(paper_id, field):
+    return document_cosine_similarity_template(paper_id, field, 7)
 
 ########################################################################################################################
 # Functions used to print scoring results
 ########################################################################################################################
 
 
-def print_scoring_results(query, scoring, _selected_terms, _query_scores, top_x=10):
+def print_scoring_results(query, scoring, _selected_terms, _query_scores, top_x=10, report_dataset=False):
     print()
     print("=" * 124)
     print("query = \"" + query + "\"")
@@ -121,8 +144,11 @@ def print_scoring_results(query, scoring, _selected_terms, _query_scores, top_x=
 
     for i in range(0, min(len(scoring), top_x)):
         paper_id, score = scoring[i]
-        print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score,
-              _selected_terms[paper_id], _query_scores)
+        if report_dataset:
+            print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score,
+                  _selected_terms[paper_id], _query_scores)
+        else:
+            print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score)
 
     print("=" * 124)
 
@@ -142,3 +168,39 @@ if __name__ == '__main__':
 
     # Print the results.
     print_scoring_results("chicken", scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = query_cosine_similarity_tf("neural", "paper_text")
+
+    # Print the results.
+    print_scoring_results("neural", scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = query_cosine_similarity_wf("neural", "paper_text")
+
+    # Print the results.
+    print_scoring_results("neural", scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = document_cosine_similarity_tf(98, "paper_text")
+
+    # Print the results.
+    print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = document_cosine_similarity_wf(98, "paper_text")
+
+    # Print the results.
+    print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = document_cosine_similarity_tf_idf(98, "paper_text")
+
+    # Print the results.
+    print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
+
+    # Calculate the cosine similarity.
+    scores, selected_terms, query_scores = document_cosine_similarity_wf_idf(98, "paper_text")
+
+    # Print the results.
+    print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
