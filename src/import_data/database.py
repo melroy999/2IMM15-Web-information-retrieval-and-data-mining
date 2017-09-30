@@ -1,7 +1,13 @@
 import sqlite3
 
 # The location of the database.sqlite file, used when accessing the database.
-sqlite_file = "../../data/database.sqlite"
+_sqlite_file = "../../data/database.sqlite"
+
+# The papers we have imported as an object.
+papers = []
+
+# A mapping from paper id to paper.
+id_to_paper = {}
 
 
 class Author:
@@ -47,7 +53,7 @@ def _import_template(table, expression):
     object_list = []
 
     # Connect to the sqlite database, and select all in the specified table.
-    with sqlite3.connect(sqlite_file) as connection:
+    with sqlite3.connect(_sqlite_file) as connection:
         c = connection.cursor()
 
         c.execute('SELECT * FROM "' + table + '"')
@@ -76,4 +82,10 @@ def import_papers():
     @:rtype: List of Paper objects.
     @:return: The list of authors taken from the papers table in the database.
     """
+    global papers
+    global id_to_paper
+
+    papers = _import_template('papers', lambda e: Paper(e))
+    id_to_paper = {paper.id: paper for paper in papers}
+
     return _import_template('papers', lambda e: Paper(e))
