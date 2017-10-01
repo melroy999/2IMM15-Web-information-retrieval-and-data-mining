@@ -6,27 +6,27 @@ from tkinter.scrolledtext import ScrolledText
 import gc
 
 from gui.util import create_tool_tip
-from information_retrieval.analyzer import Analyzer, scoring_measure_ids
+from information_retrieval.analyzer import Analyzer, scoring_measure_ids, results_to_show
 
 # The part of the GUI which handles indexing settings and functions.
-from information_retrieval.indexer import Indexer, stemming_options
+from information_retrieval.indexer import Indexer, stemming_options, paper_fields
 
 
 class IndexFrame(Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
         self.pack(fill=X, expand=0, padx=10, pady=10)
 
         # Now, make drop down menus for the type of stemming and the search method in a different frame.
         self.stemming_var = StringVar(self)
         stemming_choices = [stemmer for stemmer in stemming_options]
         self.stemming_var.set(stemming_choices[-1])
-        self.stemming_label = Label(self, text="Stemmer: ")
+        self.stemming_label = Label(self, text="Stemmer:")
         self.stemming_field = OptionMenu(self, self.stemming_var, *stemming_choices)
 
-        self.stemming_field.config(width=25)
         self.stemming_label.grid(row=0, column=0, sticky=W)
+        self.stemming_field.config(width=25)
         self.stemming_field.grid(row=0, column=1, sticky=W)
 
         # Now add some checkboxes for other options that the indexer provides.
@@ -78,7 +78,7 @@ def finish_indexing():
 class QueryFrame(Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(5, weight=1)
         self.pack(fill=X, expand=0, padx=10, pady=10)
 
         # Start by making a bar at the top containing a label, field and button for query search.
@@ -88,8 +88,8 @@ class QueryFrame(Frame):
         self.query_button = Button(self, text="Search", command=lambda: start_analyzing(), width=20, state="disabled")
 
         self.query_label.grid(row=0, column=0, sticky=W)
-        self.query_field.grid(row=0, column=1, sticky=E + W, padx=10)
-        self.query_button.grid(row=0, column=2, sticky=E)
+        self.query_field.grid(row=0, column=1, columnspan=5, sticky=E + W, padx=10)
+        self.query_button.grid(row=0, column=6, sticky=E)
 
         # Advanced options for the querying.
         self.search_method_var = StringVar(self)
@@ -98,14 +98,32 @@ class QueryFrame(Frame):
         self.search_method_label = Label(self, text="Search method: ")
         self.search_method_field = OptionMenu(self, self.search_method_var, *search_method_choices)
 
-        self.find_comparable_papers = ttk.Checkbutton(self, text="Find similar papers")
-        self.find_comparable_papers.state(['!alternate'])
-        self.find_comparable_papers.grid(row=1, column=2, sticky=W)
-        create_tool_tip(self.find_comparable_papers, "Enter the paper's title to find similar papers.")
+        self.target_field_var = StringVar(self)
+        target_field_choices = [field for field in paper_fields]
+        self.target_field_var.set(target_field_choices[-1])
+        self.target_field_label = Label(self, text="Paper field: ")
+        self.target_field_field = OptionMenu(self, self.target_field_var, *target_field_choices)
 
         self.search_method_field.config(width=25)
-        self.search_method_label.grid(row=1, column=0, sticky=W)
+        self.search_method_label.grid(row=1, column=0)
         self.search_method_field.grid(row=1, column=1, sticky=W, padx=10)
+        self.target_field_field.config(width=25)
+        self.target_field_label.grid(row=1, column=2, sticky=W)
+        self.target_field_field.grid(row=1, column=3, sticky=W, padx=10)
+
+        self.result_count_var = IntVar(self)
+        result_count_choices = [results for results in results_to_show]
+        self.result_count_var.set(result_count_choices[0])
+        self.result_count_label = Label(self, text="#Results: ")
+        self.result_count_field = OptionMenu(self, self.result_count_var, *result_count_choices)
+        self.result_count_field.config(width=25)
+        self.result_count_label.grid(row=1, column=4, sticky=W)
+        self.result_count_field.grid(row=1, column=5, sticky=W, padx=10)
+
+        self.find_comparable_papers = ttk.Checkbutton(self, text="Find similar papers")
+        self.find_comparable_papers.state(['!alternate'])
+        self.find_comparable_papers.grid(row=1, column=6, sticky=W)
+        create_tool_tip(self.find_comparable_papers, "Enter the paper's title to find similar papers.")
 
 
 # Start analyzing the query and find results.
@@ -124,6 +142,8 @@ def start_analyzing():
     # Get the query mode and whether we are searching for a document or not.
     find_similar_documents = gui.query_frame.find_comparable_papers.instate(['selected'])
     query_score_mode = gui.query_frame.search_method_var.get()
+    target_field = gui.query_frame.target_field_var.get()
+    result_count = gui.query_frame.result_count_var.get()
 
     # Change the status.
     update_status("Searching...")
@@ -131,16 +151,17 @@ def start_analyzing():
     print("Starting search with the following settings: ")
     print("- Scoring mode:", query_score_mode)
     print("- Search for similar document:", find_similar_documents)
-    print("- Target field:", "paper_text")
+    print("- Target field:", target_field)
+    print("- Number of results:", result_count)
     print()
 
     # Update the analyzer.
     global analyzer
-    analyzer = Analyzer(indexer, query, "paper_text")
+    analyzer = Analyzer(indexer, query, target_field)
 
     # Initialize the analyzer.
     def runner():
-        analyzer.search(find_similar_documents, query_score_mode)
+        analyzer.search(find_similar_documents, query_score_mode, result_count)
         finish_analyzing()
 
     t = threading.Thread(target=runner)

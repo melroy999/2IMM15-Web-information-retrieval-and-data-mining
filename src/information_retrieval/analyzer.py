@@ -1,7 +1,5 @@
 import math
 
-from collections import defaultdict
-
 from import_data import database
 
 
@@ -13,6 +11,9 @@ scoring_measure_ids = {
     "tf.idf": 6,
     "wf.idf": 7
 }
+
+# Amount of results we can show.
+results_to_show = [10, 20, 50, 100, 1000, 10000]
 
 
 class Analyzer(object):
@@ -153,70 +154,38 @@ class Analyzer(object):
         for i in range(0, min(len(scoring), top_x)):
             paper_id, score = scoring[i]
             if report_dataset:
-                print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score,
+                print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.id_to_paper[paper_id].title,
                       _selected_terms[paper_id], _query_scores)
             else:
-                print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score)
+                print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.id_to_paper[paper_id].title)
 
         print("=" * 70)
 
-    def search(self, is_document, scoring_mode):
+    def search(self, is_document, scoring_mode, top_x):
         if is_document:
+            # This will be tricky, first try to convert the query to an int to see if we have an id as input.
+            try:
+                paper_id = int(self.query)
+            except ValueError:
+                # If it is not, we know that we have a paper title. Find the paper that corresponds most.
+                scores, _, _ = self.query_cosine_similarity_template(self.query, "title", 4)
+
+                # Try to take the best scoring paper as target. This can be empty however!
+                try:
+                    paper_id = scores[0][0]
+                except KeyError:
+                    print("Paper not found. Please try again!")
+                    return
+
+            # Report on what we found.
+            print("Target paper: #" + str(paper_id) + " \"" + database.id_to_paper[paper_id].title + "\"")
+
             # Handle the query as a paper id.
-            scores, selected_terms, query_scores = self.document_cosine_similarity_template(int(self.query), self.field, scoring_measure_ids[scoring_mode])
+            scores, selected_terms, query_scores = self.document_cosine_similarity_template(paper_id, self.field, scoring_measure_ids[scoring_mode])
         else:
             if scoring_measure_ids[scoring_mode] > 5:
                 print("Error: the scoring mode \"" + scoring_mode + "\" is not supported for normal queries.")
                 return
             scores, selected_terms, query_scores = self.query_cosine_similarity_template(self.query, self.field, scoring_measure_ids[scoring_mode])
 
-        self.print_scoring_results(self.query, scores, selected_terms, query_scores)
-
-    def analyzer_examples(self):
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.query_cosine_similarity_tf("chicken", "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("chicken", scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.query_cosine_similarity_wf("chicken", "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("chicken", scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.query_cosine_similarity_tf("neural", "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("neural", scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.query_cosine_similarity_wf("neural", "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("neural", scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.document_cosine_similarity_tf(98, "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.document_cosine_similarity_wf(98, "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.document_cosine_similarity_tf_idf(98, "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
-
-        # Calculate the cosine similarity.
-        scores, selected_terms, query_scores = self.document_cosine_similarity_wf_idf(98, "paper_text")
-
-        # Print the results.
-        self.print_scoring_results("paper_id " + str(98), scores, selected_terms, query_scores)
+        self.print_scoring_results(self.query, scores, selected_terms, query_scores, top_x)

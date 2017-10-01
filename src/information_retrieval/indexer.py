@@ -24,6 +24,9 @@ stemming_options = {
     "wordnet lemmatizer": execute_nltk_wordnet_lemmatizer
 }
 
+# The fields we target in the papers.
+paper_fields = ["title", "abstract", "paper_text"]
+
 
 class Indexer(object):
     ####################################################################################################################
@@ -35,9 +38,6 @@ class Indexer(object):
 
     # The global variables we will be using between files.
     paper_tf_data = None
-
-    # The fields we target in the papers.
-    paper_fields = ["title", "abstract", "paper_text"]
 
     # The stemming mode used.
     stemming_mode = execute_nltk_wordnet_lemmatizer
@@ -69,14 +69,14 @@ class Indexer(object):
         self.update_status("Setting term frequency default vectors...")
         for paper_id, frequencies in paper_ft_data.items():
             a = paper_ft_data[paper_id]
-            for field in self.paper_fields:
+            for field in paper_fields:
                 # noinspection PyArgumentList
                 a[field] = defaultdict(lambda: (0, 0, 0, 0, 0, 0, 0, 0), a[field])
 
         # Generate a list of all terms used in the papers.
         self.update_status("Gathering term occurrences per paper field...")
         print("Gathering term lists:")
-        for field in self.paper_fields:
+        for field in paper_fields:
             # Here we keep the list of terms of the title, abstract and paper_text separately as a dictionary.
             terms[field] = set().union(*[list(fields[field]) for paper_id, fields in paper_ft_data.items()])
             print("- Encountered " + str(len(terms[field])) + " unique terms for field \"" + field + "\".")
@@ -87,7 +87,7 @@ class Indexer(object):
 
         # Do this for every paper field separately.
         self.update_status("Calculate collection frequency and document frequency...")
-        for field in self.paper_fields:
+        for field in paper_fields:
             _global_idf_data[field] = defaultdict(lambda: (0, 0, 0))
 
             # For each paper, increment the terms which occur in the paper, and sum up the frequencies for the terms.
@@ -108,7 +108,7 @@ class Indexer(object):
 
         # Now do some normalization in the paper_ft_data dictionary.
         self.update_status("Normalize document vectors...")
-        for field in self.paper_fields:
+        for field in paper_fields:
             for paper in papers:
                 data = paper_ft_data[paper.id][field]
 
@@ -142,7 +142,7 @@ class Indexer(object):
     def process_paper(self, paper):
         # The paper has multiple components we might be interested in, such as the title, abstract and paper text.
         # Tokenize all of these.
-        return {field: self.process_text(paper.__getattribute__(field)) for field in self.paper_fields}
+        return {field: self.process_text(paper.__getattribute__(field)) for field in paper_fields}
 
     # Generate the index of the text.
     def process_text(self, text):
