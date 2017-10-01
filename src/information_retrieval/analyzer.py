@@ -1,12 +1,26 @@
 import math
 
+from collections import defaultdict
+
 from import_data import database
 
 
+# The search modes we have, such as tf, wf, tf.idf and wf.idf scoring and which id we can access the variables from.
+# noinspection PyArgumentList
+scoring_measure_ids = {
+    "tf": 4,
+    "wf": 5,
+    "tf.idf": 6,
+    "wf.idf": 7
+}
+
+
 class Analyzer(object):
-    # The indexer to take the data from.
-    def __init__(self, indexer):
+    # The indexer to take the data from and the query we will execute.
+    def __init__(self, indexer, query, field):
         self.indexer = indexer
+        self.query = query
+        self.field = field
 
     ####################################################################################################################
     # Generic functions used during all similarity measures.
@@ -145,6 +159,18 @@ class Analyzer(object):
                 print(str(i + 1) + ".\t", paper_id, "\t", database.id_to_paper[paper_id].title, score)
 
         print("=" * 70)
+
+    def search(self, is_document, scoring_mode):
+        if is_document:
+            # Handle the query as a paper id.
+            scores, selected_terms, query_scores = self.document_cosine_similarity_template(int(self.query), self.field, scoring_measure_ids[scoring_mode])
+        else:
+            if scoring_measure_ids[scoring_mode] > 5:
+                print("Error: the scoring mode \"" + scoring_mode + "\" is not supported for normal queries.")
+                return
+            scores, selected_terms, query_scores = self.query_cosine_similarity_template(self.query, self.field, scoring_measure_ids[scoring_mode])
+
+        self.print_scoring_results(self.query, scores, selected_terms, query_scores)
 
     def analyzer_examples(self):
         # Calculate the cosine similarity.
