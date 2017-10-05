@@ -7,8 +7,8 @@ _sqlite_file = "../../data/database.sqlite"
 papers = []
 
 # A mapping from paper id to paper.
-id_to_paper = {}
-
+paper_id_to_paper = {}
+paper_id_to_list_id = {}
 
 class Author:
     """
@@ -56,7 +56,7 @@ def _import_template(table, expression):
     with sqlite3.connect(_sqlite_file) as connection:
         c = connection.cursor()
 
-        c.execute('SELECT * FROM "' + table + '"')
+        c.execute('SELECT * FROM "' + table + '" WHERE NOT (id == 5820 OR id == 6178)')
         for e in c.fetchall():
             paper = expression(e)
             object_list.append(paper)
@@ -83,9 +83,11 @@ def import_papers():
     @:return: The list of authors taken from the papers table in the database.
     """
     global papers
-    global id_to_paper
+    global paper_id_to_paper
+    global paper_id_to_list_id
 
     papers = _import_template('papers', lambda e: Paper(e))
-    id_to_paper = {paper.id: paper for paper in papers}
+    paper_id_to_paper = {paper.id: paper for paper in papers}
+    paper_id_to_list_id = {paper.id: i for i, paper in enumerate(papers)}
 
     return _import_template('papers', lambda e: Paper(e))

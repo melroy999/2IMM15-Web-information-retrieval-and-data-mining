@@ -4,14 +4,16 @@ from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
 from gui.util import create_tool_tip
-from information_retrieval.analyzer import Analyzer, scoring_measure_ids, results_to_show
 
 # The part of the GUI which handles indexing settings and functions.
 from information_retrieval.indexer import Indexer, paper_fields
 from information_retrieval.normalizer import name_to_normalizer
+from import_data import database
+from information_retrieval.vector_space_analysis import scoring_measures, search
 
-# Variable holding all results from an indexing run.
-results = None
+# Amount of results we can show.
+results_to_show = [10, 20, 50, 100, 1000, 10000]
+
 
 class IndexFrame(Frame):
     def __init__(self, master):
@@ -62,8 +64,7 @@ def start_indexing():
 
     # Initialize the indexer.
     def runner():
-        global results
-        results = indexer.full_index(stemming_mode, use_stopwords, update_status)
+        indexer.full_index(stemming_mode, use_stopwords, update_status)
         finish_indexing()
 
     t = threading.Thread(target=runner)
@@ -95,7 +96,7 @@ class QueryFrame(Frame):
 
         # Advanced options for the querying.
         self.search_method_var = StringVar(self)
-        search_method_choices = [scoring_mode for scoring_mode in scoring_measure_ids]
+        search_method_choices = [scoring_mode for scoring_mode in scoring_measures]
         self.search_method_var.set(search_method_choices[0])
         self.search_method_label = Label(self, text="Search method: ")
         self.search_method_field = OptionMenu(self, self.search_method_var, *search_method_choices)
@@ -157,17 +158,33 @@ def start_analyzing():
     print("- Number of results:", result_count)
     print()
 
-    # Update the analyzer.
-    global analyzer
-    analyzer = Analyzer(indexer, query, target_field)
-
     # Initialize the analyzer.
     def runner():
-        analyzer.search(find_similar_documents, query_score_mode, result_count)
+        # Calculate the scores.
+        # query, indexer, field, scoring_measure="tf", similar_document_search=False
+        scores = search(query, indexer, target_field, query_score_mode, find_similar_documents)
+
+        # Print the scores.
+        print_scoring_results(query, scores, result_count)
+
+        # Finish the analyzing process.
         finish_analyzing()
 
     t = threading.Thread(target=runner)
     t.start()
+
+
+def print_scoring_results(query, scores, top_x=10):
+    print()
+    print("=" * 70)
+    print("query = \"" + query + "\"")
+    print(min(len(scores), top_x), "of", len(scores), "results:")
+
+    for i in range(0, min(len(scores), top_x)):
+        paper_id, score = scores[i]
+        print(str(i + 1) + ".\t", paper_id, "\t", '%0.20f' % score, "\t", database.paper_id_to_paper[paper_id].title)
+
+    print("=" * 70)
 
 
 # Finish analyzing and report the results.
@@ -229,15 +246,10 @@ class IndexingInterface(Frame):
         self.pack(fill=BOTH, expand=1)
 
         self.index_frame = IndexFrame(self)
-
         self.separator_1 = SeparatorFrame(self)
-
         self.query_frame = QueryFrame(self)
-
         self.separator_2 = SeparatorFrame(self)
-
         self.result_frame = ResultFrame(self)
-
         self.status_frame = StatusFrame(self)
 
 

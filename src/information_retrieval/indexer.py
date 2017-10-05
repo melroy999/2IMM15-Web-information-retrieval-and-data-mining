@@ -19,6 +19,12 @@ class Indexer(object):
     # The status bar reference.
     status_bar = None
 
+    # Holds the results of the indexing.
+    results = None
+
+    # Holds the normalizer last used in this indexer.
+    normalizer = None
+
     # Update the status in the gui, if possible.
     def update_status(self, status):
         try:
@@ -26,10 +32,10 @@ class Indexer(object):
         except TypeError:
             pass
 
-    # Process the term frequencies of the terms found in the paper.
+    # Process the term frequencies of the given text.
     @staticmethod
-    def process_paper(paper, field, normalizer):
-        lowercase = paper.__getattribute__(field).lower()
+    def process_text(text, normalizer):
+        lowercase = text.lower()
         no_punctuation = normalizer.remove_punctuation(lowercase)
         tokens = no_punctuation.split()
 
@@ -40,6 +46,12 @@ class Indexer(object):
         tf_length, wf, wf_length = Indexer.calculate_wf_and_lengths(tf)
 
         return tf, wf, math.sqrt(tf_length), math.sqrt(wf_length)
+
+    # Process the term frequencies of the terms found in the paper.
+    @staticmethod
+    def process_paper(paper, field, normalizer):
+        # Choose the text, and use process_text.
+        return Indexer.process_text(paper.__getattribute__(field), normalizer)
 
     # Calculate the term frequencies of the tokens, with the given normalizer.
     @staticmethod
@@ -65,27 +77,28 @@ class Indexer(object):
 
     # Index a certain field for all the papers, with multiprocessing when defined.
     def index(self, papers, field, normalizer, multiprocessing=True):
-        self.update_status("Indexing field \"" + field + "\"...")
+        self.update_status("Indexing field \"" + field + "\"... gathering term frequencies...")
         if multiprocessing:
             with Pool(4) as pool:
                 # Schedule the papers to be processed by the pool, and save the term frequency data.
-                paper_term_frequencies = pool.map(partial(self.process_paper, field=field, normalizer=normalizer),
-                                                  papers)
+                paper_tfs = pool.map(partial(self.process_paper, field=field, normalizer=normalizer), papers)
         else:
-            paper_term_frequencies = []
+            paper_tfs = []
             for paper in papers:
-                paper_term_frequencies.append(self.process_paper(paper, field, normalizer))
+                paper_tfs.append(self.process_paper(paper, field, normalizer))
 
         # Calculate the collective statistics, such as the cf and df measures.
-        idf_collection = self.calculate_cf_df(paper_term_frequencies)
+        self.update_status("Indexing field \"" + field + "\"... gathering collection frequencies...")
+        idf_collection = self.calculate_cf_df(paper_tfs)
 
         # Calculate the inverse document frequency.
+        self.update_status("Indexing field \"" + field + "\"... calculating inverted document frequency...")
         idf_collection, idf_collection_length = self.calculate_idf_and_idf_length(idf_collection)
 
         # Report on the amount of terms found for the field.
         print("Found", len(idf_collection), "unique terms for the field \"" + field + "\".")
 
-        return paper_term_frequencies, idf_collection, idf_collection_length
+        return paper_tfs, idf_collection, idf_collection_length
 
     # Calculate the collection frequency and the document frequency.
     @staticmethod
@@ -118,24 +131,28 @@ class Indexer(object):
         start = time.time()
 
         # Create a normalizer object.
-        normalizer = Normalizer(use_stopwords, normalizer_name)
+        self.normalizer = Normalizer(use_stopwords, normalizer_name)
 
         # Index the different fields of the paper.
-        results = {
-            "paper_text": self.index(database.papers, "paper_text", normalizer, True),
-            "abstract_data": self.index(database.papers, "abstract", normalizer, False),
-            "title_data": self.index(database.papers, "title", normalizer, False)
+        self.results = {
+            "paper_text": self.index(database.papers, "paper_text", self.normalizer, True),
+            "abstract_data": self.index(database.papers, "abstract", self.normalizer, False),
+            "title_data": self.index(database.papers, "title", self.normalizer, False)
         }
 
         # Report the time.
         print()
         print("Finished indexing in", time.time() - start, "seconds.")
+        self.update_status("Finished indexing.")
+        print()
 
         # Create a cheat file which should make normalizations faster next time.
-        normalizer.create_table_file()
+        self.normalizer.create_table_file()
 
-        # Return all required components.
-        return results
+    # During indexing of a query, do the exact same to the query as would be done with the paper contents.
+    def index_query(self, query):
+        # Call the index text directly for the query.
+        return self.process_text(query, self.normalizer)
 
     # Initializes the indexer.
     def __init__(self):

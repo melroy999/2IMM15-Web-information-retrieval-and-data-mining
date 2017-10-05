@@ -31,8 +31,8 @@ name_to_normalizer = {
 
 
 # A dict that just returns the key that was requested.
-class smart_ass_dict(dict):
-    def __missing__(self,key):
+class CaptainObviousDict(dict):
+    def __missing__(self, key):
         return key
 
 
@@ -45,9 +45,11 @@ class Normalizer:
         # A dictionary that will hold already stemmed words.
         try:
             if self.operator_name == "None":
-                self.term_to_normalized_term = smart_ass_dict()
+                self.term_to_normalized_term = CaptainObviousDict()
             else:
                 self.term_to_normalized_term = self.load_table_file()
+                print("Successfully loaded previously saved \"" + operator_name + "\" mapping table.")
+                print()
             self.skip_file_write = True
         except FileNotFoundError:
             self.term_to_normalized_term = {}
