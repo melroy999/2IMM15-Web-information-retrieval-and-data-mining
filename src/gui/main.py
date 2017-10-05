@@ -3,14 +3,15 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
-import gc
-
 from gui.util import create_tool_tip
 from information_retrieval.analyzer import Analyzer, scoring_measure_ids, results_to_show
 
 # The part of the GUI which handles indexing settings and functions.
-from information_retrieval.indexer import Indexer, stemming_options, paper_fields
+from information_retrieval.indexer import Indexer, paper_fields
+from information_retrieval.normalizer import name_to_normalizer
 
+# Variable holding all results from an indexing run.
+results = None
 
 class IndexFrame(Frame):
     def __init__(self, master):
@@ -20,7 +21,7 @@ class IndexFrame(Frame):
 
         # Now, make drop down menus for the type of stemming and the search method in a different frame.
         self.stemming_var = StringVar(self)
-        stemming_choices = [stemmer for stemmer in stemming_options]
+        stemming_choices = [stemmer for stemmer in name_to_normalizer.keys()]
         self.stemming_var.set(stemming_choices[-1])
         self.stemming_label = Label(self, text="Stemmer:")
         self.stemming_field = OptionMenu(self, self.stemming_var, *stemming_choices)
@@ -61,7 +62,8 @@ def start_indexing():
 
     # Initialize the indexer.
     def runner():
-        indexer.index(stemming_mode, use_stopwords, update_status)
+        global results
+        results = indexer.full_index(stemming_mode, use_stopwords, update_status)
         finish_indexing()
 
     t = threading.Thread(target=runner)
