@@ -164,8 +164,9 @@ def start_analyzing():
         # query, indexer, field, scoring_measure="tf", similar_document_search=False
         scores = search(query, indexer, target_field, query_score_mode, find_similar_documents)
 
-        # Print the scores.
-        print_scoring_results(query, scores, result_count)
+        if scores is not None:
+            # Print the scores.
+            print_scoring_results(query, scores, result_count)
 
         # Finish the analyzing process.
         finish_analyzing()
@@ -175,6 +176,10 @@ def start_analyzing():
 
 
 def print_scoring_results(query, scores, top_x=10):
+    if len(scores) == 0:
+        print("No results found for query \"" + query + "\"!")
+        return
+
     print()
     print("=" * 70)
     print("query = \"" + query + "\"")
@@ -182,7 +187,7 @@ def print_scoring_results(query, scores, top_x=10):
 
     for i in range(0, min(len(scores), top_x)):
         paper_id, score = scores[i]
-        print(str(i + 1) + ".\t", paper_id, "\t", '%0.20f' % score, "\t", database.paper_id_to_paper[paper_id].title)
+        print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.paper_id_to_paper[paper_id].title)
 
     print("=" * 70)
 

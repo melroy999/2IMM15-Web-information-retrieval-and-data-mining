@@ -6,6 +6,8 @@ import time
 
 import math
 
+import gc
+
 from import_data import database
 
 # The fields we target in the papers.
@@ -75,6 +77,16 @@ class Indexer(object):
             wf_length += wf[term] ** 2
         return tf_length, wf, wf_length
 
+    # Calculate the tf_idf and wf_idf measures, and calculate their lengths.
+    @staticmethod
+    def calculate_tf_idf(vector, idf_collection):
+        tf, wf, tf_length, wf_length = vector
+        tf_idf = defaultdict(int, {term: value * idf_collection[term][2] for term, value in tf.items()})
+        tf_idf_length = math.sqrt(sum([value ** 2 for value in tf_idf.values()]))
+        wf_idf = defaultdict(int, {term: value * idf_collection[term][2] for term, value in wf.items()})
+        wf_idf_length = math.sqrt(sum([value ** 2 for value in wf_idf.values()]))
+        return tf, wf, tf_idf, wf_idf, tf_length, wf_length, tf_idf_length, wf_idf_length
+
     # Index a certain field for all the papers, with multiprocessing when defined.
     def index(self, papers, field, normalizer, multiprocessing=True):
         self.update_status("Indexing field \"" + field + "\"... gathering term frequencies...")
@@ -95,10 +107,17 @@ class Indexer(object):
         self.update_status("Indexing field \"" + field + "\"... calculating inverted document frequency...")
         idf_collection, idf_collection_length = self.calculate_idf_and_idf_length(idf_collection)
 
+        # Pre-calculate tf.idf and wf.idf.
+        self.update_status("Indexing field \"" + field + "\"... calculating and normalizing tf.idf + wf.idf ...")
+
+        paper_frequencies = []
+        for vector in paper_tfs:
+            paper_frequencies.append(self.calculate_tf_idf(vector, idf_collection))
+
         # Report on the amount of terms found for the field.
         print("Found", len(idf_collection), "unique terms for the field \"" + field + "\".")
 
-        return paper_tfs, idf_collection, idf_collection_length
+        return paper_frequencies, idf_collection, idf_collection_length
 
     # Calculate the collection frequency and the document frequency.
     @staticmethod
@@ -121,9 +140,16 @@ class Indexer(object):
             idf_collection_length += idf_collection[term][2] ** 2
         return idf_collection, idf_collection_length
 
+    def reset(self):
+        self.results = None
+        gc.collect()
+
     # Calculate a full index of the papers.
     # This includes the fields: paper_text, abstract, title
     def full_index(self, normalizer_name, use_stopwords, status_bar):
+        # Reset to avoid memory issues!
+        self.reset()
+
         # Set the status update bar update function.
         self.status_bar = status_bar
 
@@ -136,8 +162,8 @@ class Indexer(object):
         # Index the different fields of the paper.
         self.results = {
             "paper_text": self.index(database.papers, "paper_text", self.normalizer, True),
-            "abstract_data": self.index(database.papers, "abstract", self.normalizer, False),
-            "title_data": self.index(database.papers, "title", self.normalizer, False)
+            "abstract": self.index(database.papers, "abstract", self.normalizer, False),
+            "title": self.index(database.papers, "title", self.normalizer, False)
         }
 
         # Report the time.
