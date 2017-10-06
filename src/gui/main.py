@@ -25,8 +25,9 @@ class IndexFrame(Frame):
         self.stemming_var = StringVar(self)
         stemming_choices = [stemmer for stemmer in name_to_normalizer.keys()]
         self.stemming_var.set(stemming_choices[-1])
-        self.stemming_label = Label(self, text="Stemmer:")
-        self.stemming_field = OptionMenu(self, self.stemming_var, *stemming_choices)
+        self.stemming_label = ttk.Label(self, text="Stemmer:")
+        self.stemming_field = ttk.Combobox(self, values=stemming_choices, textvariable=self.stemming_var,
+                                           state="readonly")
 
         self.stemming_label.grid(row=0, column=0, sticky=W)
         self.stemming_field.config(width=25)
@@ -39,7 +40,7 @@ class IndexFrame(Frame):
         self.find_stop_words.grid(row=0, column=2, sticky=W)
 
         # Create a button to start indexing.
-        self.indexing_button = Button(self, text="Index papers", command=lambda: start_indexing(), width=20)
+        self.indexing_button = ttk.Button(self, text="Index papers", command=lambda: start_indexing(), width=20)
         self.indexing_button.grid(row=0, column=3, sticky=E)
 
 
@@ -86,9 +87,10 @@ class QueryFrame(Frame):
 
         # Start by making a bar at the top containing a label, field and button for query search.
         # Initially disabled button, as we need to index first.
-        self.query_label = Label(self, text="Query: ")
-        self.query_field = Entry(self)
-        self.query_button = Button(self, text="Search", command=lambda: start_analyzing(), width=20, state="disabled")
+        self.query_label = ttk.Label(self, text="Query: ")
+        self.query_field = ttk.Entry(self)
+        self.query_button = ttk.Button(self, text="Search", command=lambda: start_analyzing(), width=20,
+                                       state="disabled")
 
         self.query_label.grid(row=0, column=0, sticky=W)
         self.query_field.grid(row=0, column=1, columnspan=5, sticky=E + W, padx=10)
@@ -98,18 +100,21 @@ class QueryFrame(Frame):
         self.search_method_var = StringVar(self)
         search_method_choices = [scoring_mode for scoring_mode in scoring_measures]
         self.search_method_var.set(search_method_choices[0])
-        self.search_method_label = Label(self, text="Search method: ")
-        self.search_method_field = OptionMenu(self, self.search_method_var, *search_method_choices)
-
-        self.target_field_var = StringVar(self)
-        target_field_choices = [field for field in paper_fields]
-        self.target_field_var.set(target_field_choices[-1])
-        self.target_field_label = Label(self, text="Paper field: ")
-        self.target_field_field = OptionMenu(self, self.target_field_var, *target_field_choices)
+        self.search_method_label = ttk.Label(self, text="Search method: ")
+        self.search_method_field = ttk.Combobox(self, values=search_method_choices, textvariable=self.search_method_var,
+                                                state="readonly")
 
         self.search_method_field.config(width=25)
         self.search_method_label.grid(row=1, column=0)
         self.search_method_field.grid(row=1, column=1, sticky=W, padx=10)
+
+        self.target_field_var = StringVar(self)
+        target_field_choices = [field for field in paper_fields]
+        self.target_field_var.set(target_field_choices[-1])
+        self.target_field_label = ttk.Label(self, text="Paper field: ")
+        self.target_field_field = ttk.Combobox(self, values=target_field_choices, textvariable=self.target_field_var,
+                                               state="readonly")
+
         self.target_field_field.config(width=25)
         self.target_field_label.grid(row=1, column=2, sticky=W)
         self.target_field_field.grid(row=1, column=3, sticky=W, padx=10)
@@ -117,8 +122,10 @@ class QueryFrame(Frame):
         self.result_count_var = IntVar(self)
         result_count_choices = [results for results in results_to_show]
         self.result_count_var.set(result_count_choices[0])
-        self.result_count_label = Label(self, text="#Results: ")
-        self.result_count_field = OptionMenu(self, self.result_count_var, *result_count_choices)
+        self.result_count_label = ttk.Label(self, text="#Results: ")
+        self.result_count_field = ttk.Combobox(self, values=result_count_choices, textvariable=self.result_count_var,
+                                               state="readonly")
+
         self.result_count_field.config(width=25)
         self.result_count_label.grid(row=1, column=4, sticky=W)
         self.result_count_field.grid(row=1, column=5, sticky=W, padx=10)
@@ -250,10 +257,16 @@ class IndexingInterface(Frame):
         self.grid_columnconfigure(1, weight=1)
         self.pack(fill=BOTH, expand=1)
 
+        # Add a notebook frame.
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill=BOTH, padx=10, pady=(10, 0))
+
         self.index_frame = IndexFrame(self)
-        self.separator_1 = SeparatorFrame(self)
+        self.notebook.add(self.index_frame, text="Indexing")
+
         self.query_frame = QueryFrame(self)
-        self.separator_2 = SeparatorFrame(self)
+        self.notebook.add(self.query_frame, text="Vector space queries")
+
         self.result_frame = ResultFrame(self)
         self.status_frame = StatusFrame(self)
 
@@ -275,11 +288,3 @@ if __name__ == '__main__':
 
     # Start the main GUI loop.
     root.mainloop()
-
-
-
-
-
-
-
-
