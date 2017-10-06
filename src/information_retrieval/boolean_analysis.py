@@ -39,32 +39,32 @@ class Stack:
 
 class Node:
     def __init__(self, value):
-        self._parent = None
-        self._children = []
+        self.parent = None
+        self.children = []
         self.value = value
 
     def add_child(self, node):
-        self._children.append(node)
-        node._parent = self
+        self.children.append(node)
+        node.parent = self
 
     def get_parent_node(self):
-        return self._parent
+        return self.parent
 
     def __str__(self):
-        if len(self._children) == 0:
+        if len(self.children) == 0:
             return self.value.__str__()
 
         if self.value == "not":
-            return "not " + self._children[0].__str__()
+            return "not " + self.children[0].__str__()
 
         result = ""
-        if self._parent is not None:
+        if self.parent is not None:
             result += "("
-        for i, child in enumerate(self._children):
+        for i, child in enumerate(self.children):
             result += child.__str__()
-            if i < len(self._children) - 1:
+            if i < len(self.children) - 1:
                 result += " " + self.value + " "
-        if self._parent is not None:
+        if self.parent is not None:
             result += ")"
         return result
 
@@ -73,6 +73,8 @@ non_normalize_terms = {"(", ")", "and", "or", "not"}
 
 
 def create_parse_tree(query, indexer):
+    print("Query:", query)
+
     # Break the query into the components. Do not use punctuation removal here.
     lower_case_query = query.lower()
 
@@ -188,7 +190,8 @@ def process_and_or_operators_template(token_stack, keyword):
         node = token_stack.pop()
 
         # If we encounter an and/or node, we want to merge the predecessor and successor of this node with the and/or.
-        if node.value == keyword:
+        # It should be a fresh token, as the subtrees can also produce and/or nodes.
+        if node.value == keyword and len(node.children) == 0:
             # Find the predecessor. By the programs logic, it is on top of the processed nodes stack.
             predecessor = processed_nodes.pop()
             successor = token_stack.pop()
@@ -214,19 +217,64 @@ def process_and_or_operators_template(token_stack, keyword):
     return processed_nodes.reverse()
 
 
-def simplify_parse_tree(root_node):
-    # Here we want to simplify the parse tree. I.e. remove unneeded brackets.
-    return root_node
+def recursive_tree_simplification(node, parent_value=""):
+    # Check if our own value is equal to the parent value. If so, tell the parent that action has to be taken.
+    # However, we want to get as deep into the tree as possible before taking action.
+    value = node.value
+
+    # Observe all children, and find which children need adjusting.
+    results = [recursive_tree_simplification(child_node, value) for child_node in node.children]
+
+    # If the result evaluates true, we have to merge the current node with the child node.
+    # Here a merge is adding the children of the child node directly to this node.
+    for i, result in reversed(list(enumerate(results))):
+        if result:
+            child_node = node.children[i]
+
+            # Merge.
+            for child_child_node in child_node.children:
+                node.add_child(child_child_node)
+
+            # Remove node at i'th position.
+            del node.children[i]
+    # The above will be skipped for a leaf node, so this is an appropriate space for finding matches.
+    return parent_value == value
+
 
 indexer = Indexer()
 indexer.normalizer = Normalizer(True, "None")
 tree = create_parse_tree("help and not (warcraft and cookies and food or (partner or cheese and pepper))", indexer)
-print(tree)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
 tree = create_parse_tree("help and not not (warcraft and cookies and food or partner or cheese and pepper)", indexer)
-print(tree)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
 tree = create_parse_tree("help or not cookie", indexer)
-print(tree)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
 tree = create_parse_tree("help and not cookie or cookies", indexer)
-print(tree)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
 tree = create_parse_tree("help and not cookie", indexer)
-print(tree)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
+tree = create_parse_tree("help and (not cookie and (cookie_cutter and not (blueberries and cheese)))", indexer)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
+tree = create_parse_tree("help or (not cookie and (cookie_cutter and (blueberries or cheese)))", indexer)
+print("Parsed:", tree)
+recursive_tree_simplification(tree)
+print("Simplified:", tree)
+print()
