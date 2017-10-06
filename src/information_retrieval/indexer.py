@@ -81,10 +81,20 @@ class Indexer(object):
     @staticmethod
     def calculate_tf_idf(vector, idf_collection):
         tf, wf, tf_length, wf_length = vector
-        tf_idf = defaultdict(int, {term: value * idf_collection[term][2] for term, value in tf.items()})
-        tf_idf_length = math.sqrt(sum([value ** 2 for value in tf_idf.values()]))
-        wf_idf = defaultdict(int, {term: value * idf_collection[term][2] for term, value in wf.items()})
-        wf_idf_length = math.sqrt(sum([value ** 2 for value in wf_idf.values()]))
+        tf_idf = defaultdict(int)
+        tf_idf_length = 0
+        for term, value in tf.items():
+            value = tf_idf[term] = value * idf_collection[term][2]
+            tf_idf_length += value ** 2
+        tf_idf_length = math.sqrt(tf_idf_length)
+
+        wf_idf = defaultdict(int)
+        wf_idf_length = 0
+        for term, value in wf.items():
+            value = wf_idf[term] = value * idf_collection[term][2]
+            wf_idf_length += value ** 2
+        wf_idf_length = math.sqrt(wf_idf_length)
+
         return tf, wf, tf_idf, wf_idf, tf_length, wf_length, tf_idf_length, wf_idf_length
 
     # Index a certain field for all the papers, with multiprocessing when defined.
@@ -109,7 +119,6 @@ class Indexer(object):
 
         # Pre-calculate tf.idf and wf.idf.
         self.update_status("Indexing field \"" + field + "\"... calculating and normalizing tf.idf + wf.idf ...")
-
         paper_frequencies = []
         for vector in paper_tfs:
             paper_frequencies.append(self.calculate_tf_idf(vector, idf_collection))

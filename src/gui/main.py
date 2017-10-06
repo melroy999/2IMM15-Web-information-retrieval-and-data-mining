@@ -29,9 +29,9 @@ class IndexFrame(Frame):
         self.stemming_field = ttk.Combobox(self, values=stemming_choices, textvariable=self.stemming_var,
                                            state="readonly")
 
-        self.stemming_label.grid(row=0, column=0, sticky=W)
         self.stemming_field.config(width=25)
-        self.stemming_field.grid(row=0, column=1, sticky=W)
+        self.stemming_label.grid(row=0, column=0, sticky=W)
+        self.stemming_field.grid(row=0, column=1, sticky=W, padx=10)
 
         # Now add some checkboxes for other options that the indexer provides.
         self.find_stop_words = ttk.Checkbutton(self, text="Enable stopwords")
