@@ -280,11 +280,14 @@ def start_vector_space_analyzing():
     def runner():
         # Calculate the scores.
         # query, indexer, field, scoring_measure="tf", similar_document_search=False
-        scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents)
+        try:
+            scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents)
 
-        if scores is not None:
-            # Print the scores.
-            print_vector_space_results(query, scores, result_count)
+            if scores is not None:
+                # Print the scores.
+                print_vector_space_results(query, scores, result_count)
+        except vsa.EmptyQueryException:
+            print("Query is empty after normalization, please change the query.")
 
         # Finish the analyzing process.
         finish_vector_space_analyzing()

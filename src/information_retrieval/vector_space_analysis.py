@@ -54,9 +54,17 @@ def cosine_query_similarity(indexer_results, field, query_collection, query_coll
                              candidate_collection_length)
 
 
+class EmptyQueryException(Exception):
+    pass
+
+
 def query_papers_search(query, indexer, field, scoring_measure_id):
     # First normalize and tokenize the query.
     query_frequency_data = indexer.index_query(query)
+
+    # The query can end up empty because of tokenization. So throw an exception of this is the case.
+    if len(query_frequency_data[0]) == 0:
+        raise EmptyQueryException()
 
     # We first have to calculate the tf.idf and wf.idf components.
     query_frequency_data = indexer.calculate_tf_idf(query_frequency_data, indexer.results[field][1])
