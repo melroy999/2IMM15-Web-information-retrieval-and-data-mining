@@ -6,6 +6,9 @@ _sqlite_file = "../../data/database.sqlite"
 # The papers we have imported as an object.
 papers = []
 
+# A set of paper ids.
+paper_ids = set()
+
 # A mapping from paper id to paper.
 paper_id_to_paper = {}
 paper_id_to_list_id = {}
@@ -85,9 +88,12 @@ def import_papers():
     global papers
     global paper_id_to_paper
     global paper_id_to_list_id
+    global paper_ids
 
     papers = _import_template('papers', lambda e: Paper(e))
     paper_id_to_paper = {paper.id: paper for paper in papers}
     paper_id_to_list_id = {paper.id: i for i, paper in enumerate(papers)}
+    paper_ids = set(paper_id_to_paper.keys())
+    print("paper ids:", len(paper_ids))
 
     return _import_template('papers', lambda e: Paper(e))

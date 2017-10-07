@@ -1,5 +1,5 @@
 from information_retrieval.indexer import Indexer
-from information_retrieval.normalizer import Normalizer
+from import_data import database
 
 
 class Stack:
@@ -42,6 +42,7 @@ class Node:
         self.parent = None
         self.children = []
         self.value = value
+        self.papers = set()
 
     def add_child(self, node):
         self.children.append(node)
@@ -52,20 +53,17 @@ class Node:
 
     def __str__(self):
         if len(self.children) == 0:
-            return self.value.__str__()
+            return self.value.__str__() + "{" + str(len(self.papers)) + "}"
 
         if self.value == "not":
-            return "not " + self.children[0].__str__()
+            return "not{" + str(len(self.papers)) + "} " + self.children[0].__str__()
 
-        result = ""
-        if self.parent is not None:
-            result += "("
+        result = "( "
         for i, child in enumerate(self.children):
             result += child.__str__()
             if i < len(self.children) - 1:
                 result += " " + self.value + " "
-        if self.parent is not None:
-            result += ")"
+        result += " ){" + str(len(self.papers)) + "}"
         return result
 
 
@@ -241,40 +239,95 @@ def recursive_tree_simplification(node, parent_value=""):
     return parent_value == value
 
 
-indexer = Indexer()
-indexer.normalizer = Normalizer(True, "None")
-tree = create_parse_tree("help and not (warcraft and cookies and food or (partner or cheese and pepper))", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help and not not (warcraft and cookies and food or partner or cheese and pepper)", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help or not cookie", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help and not cookie or cookies", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help and not cookie", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help and (not cookie and (cookie_cutter and not (blueberries and cheese)))", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
-tree = create_parse_tree("help or (not cookie and (cookie_cutter and (blueberries or cheese)))", indexer)
-print("Parsed:", tree)
-recursive_tree_simplification(tree)
-print("Simplified:", tree)
-print()
+def search(query, indexer, field):
+    # Create a tree.
+    parse_tree = create_parse_tree(query, indexer)
+    print("Parsed:", parse_tree)
+
+    # Simplify the tree.
+    recursive_tree_simplification(parse_tree)
+    print("Simplified:", parse_tree)
+
+    # Now, start solving not/and/or operations from the bottom up. Here we should take an order that is fastest.
+    # I.e, optimal set union/intersection orders.
+    # This also handles fetching leaf node values.
+    solve_tree_recursively(parse_tree, field, indexer)
+    print("Solved:", parse_tree)
+    print()
+
+
+def solve_tree_recursively(node, field, indexer):
+    # We want to go as deep as possible before going up, so do the recursive call first.
+    for child in node.children:
+        solve_tree_recursively(child, field, indexer)
+
+    # We only want to take action if the node is an and/or/not operator.
+    if node.value == "not":
+        # In case of a not, we have to do a set minus of the complete paper_id space.
+        child_node = node.children[0]
+
+        # Do set minus using the complete paper_id set specified in the database module.
+        node.papers = database.paper_ids - child_node.papers
+
+    elif node.value == "or":
+        # In case of an or, we have to start with the largest child papers set, and do unions with the other sets.
+        solve_or_operator(node)
+        pass
+    elif node.value == "and":
+        # For and, we have to start with the smallest child papers set, and do intersections with the other sets.
+        solve_and_operator(node)
+        pass
+    else:
+        # We will have ended up at a leaf node. If so, calculate the value associated with it.
+        # This is a leaf node, so check the keyword and fetch the statistics from the indexer.
+        frequency_data = indexer.results[field][0]
+
+        # The term we want to find in the frequency table.
+        term = node.value
+
+        # Iterate over all papers.
+        for i, paper in enumerate(database.papers):
+            if frequency_data[i][0][term] > 0:
+                node.papers.add(i)
+
+        # Report on what we found.
+        print("Term \"" + term + "\" occurs in " + str(len(node.papers)) + " papers.")
+
+
+def solve_and_operator(node):
+    # First create a list of sets that we can sort later, and sort it on length in ascending order.
+    set_collection = [child.papers for child in node.children]
+    set_collection.sort(key=len)
+
+    # Now take the first item in the set, which we will use as the base value of this node.
+    node.papers = set(set_collection[0])
+
+    # Now iterate over all other sets in order, skipping 0.
+    for i in range(1, len(set_collection)):
+        node.papers = node.papers.intersection(set_collection[i])
+
+
+def solve_or_operator(node):
+    # First create a list of sets that we can sort later, and sort it on length in descending order.
+    set_collection = [child.papers for child in node.children]
+    set_collection.sort(key=len, reverse=True)
+
+    # Now take the first item in the set, which we will use as the base value of this node.
+    node.papers = set(set_collection[0])
+
+    # Now iterate over all other sets in order, skipping 0.
+    for i in range(1, len(set_collection)):
+        node.papers = node.papers.union(set_collection[i])
+
+
+if __name__ == '__main__':
+    indexer = Indexer()
+    indexer.full_index("None", True, None)
+    search("help and not (warcraft and cookies and food or (partner or cheese and pepper))", indexer, "paper_text")
+    search("help and not not (warcraft and cookies and food or partner or cheese and pepper)", indexer, "paper_text")
+    search("help or not cookie", indexer, "paper_text")
+    search("help and not cookie or cookies", indexer, "paper_text")
+    search("help and not cookie", indexer, "paper_text")
+    search("help and (not cookie and (cookie_cutter and not (blueberries and cheese)))", indexer, "paper_text")
+    search("help or (not cookie and (cookie_cutter and (blueberries or cheese)))", indexer, "paper_text")
+    search("not chicken and neural", indexer, "paper_text")
