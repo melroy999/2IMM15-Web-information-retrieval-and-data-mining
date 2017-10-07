@@ -51,12 +51,15 @@ class Node:
     def get_parent_node(self):
         return self.parent
 
-    def __str__(self):
+    def get_structure_string(self):
+        return self.__str__()
+
+    def get_value_string(self):
         if len(self.children) == 0:
-            return self.value.__str__() + "{" + str(len(self.papers)) + "}"
+            return self.value + "{" + str(len(self.papers)) + "}"
 
         if self.value == "not":
-            return "not{" + str(len(self.papers)) + "} " + self.children[0].__str__()
+            return "not{" + str(len(self.papers)) + "} " + self.children[0].get_value_string()
 
         if self.value == "in":
             return "[" + self.children[1].value + " in " + self.children[0].value + "]" \
@@ -64,10 +67,28 @@ class Node:
 
         result = "( "
         for i, child in enumerate(self.children):
-            result += child.__str__()
+            result += child.get_value_string()
             if i < len(self.children) - 1:
                 result += " " + self.value + " "
         result += " ){" + str(len(self.papers)) + "}"
+        return result
+
+    def __str__(self):
+        if len(self.children) == 0:
+            return self.value.__str__()
+
+        if self.value == "not":
+            return "not " + self.children[0].__str__()
+
+        if self.value == "in":
+            return "[" + self.children[1].value + " in " + self.children[0].value + "]"
+
+        result = "( "
+        for i, child in enumerate(self.children):
+            result += child.__str__()
+            if i < len(self.children) - 1:
+                result += " " + self.value + " "
+        result += " )"
         return result
 
 
@@ -254,17 +275,17 @@ def recursive_tree_simplification(node, parent_value=""):
 def search(query, indexer, field):
     # Create a tree.
     parse_tree = create_parse_tree(query, indexer)
-    print("Parsed:", parse_tree)
+    print("Parsed:", parse_tree.get_structure_string())
 
     # Simplify the tree.
     recursive_tree_simplification(parse_tree)
-    print("Simplified:", parse_tree)
+    print("Simplified:", parse_tree.get_structure_string())
 
     # Now, start solving not/and/or operations from the bottom up. Here we should take an order that is fastest.
     # I.e, optimal set union/intersection orders.
     # This also handles fetching leaf node values.
     solve_tree_recursively(parse_tree, field, indexer)
-    print("Solved:", parse_tree)
+    print("Solved:", parse_tree.get_value_string())
     print()
 
     # Now that we have solved the tree, we can take the result from the top node.
@@ -317,7 +338,7 @@ def extract_papers_from_index(field, indexer, node, term):
     # Iterate over all papers.
     for i, paper in enumerate(database.papers):
         if frequency_data[i][0][term] > 0:
-            node.papers.add(i)
+            node.papers.add(paper.id)
 
     # Report on what we found.
     print("Term \"" + term + "\" in field \"" + field + "\" occurs in " + str(len(node.papers)) + " papers.")

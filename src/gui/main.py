@@ -168,16 +168,12 @@ def print_boolean_results(query, results, top_x=10):
         print("No results found for query \"" + query + "\"!")
         return
 
-    print()
-    print("=" * 70)
     print("query = \"" + query + "\"")
     print(min(len(results), top_x), "of", len(results), "results:")
 
     for i in range(0, min(len(results), top_x)):
         paper = results[i]
-        print(str(i + 1) + ".\t", paper.id, "\t", paper.title)
-
-    print("=" * 70)
+        print(paper.id, "\t", paper.title)
 
 
 # Finish analyzing and report the results.
@@ -302,16 +298,12 @@ def print_vector_space_results(query, scores, top_x=10):
         print("No results found for query \"" + query + "\"!")
         return
 
-    print()
-    print("=" * 70)
     print("query = \"" + query + "\"")
     print(min(len(scores), top_x), "of", len(scores), "results:")
 
     for i in range(0, min(len(scores), top_x)):
         paper_id, score = scores[i]
         print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.paper_id_to_paper[paper_id].title)
-
-    print("=" * 70)
 
 
 # Finish analyzing and report the results.
