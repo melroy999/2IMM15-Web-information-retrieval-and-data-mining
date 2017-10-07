@@ -94,6 +94,5 @@ def import_papers():
     paper_id_to_paper = {paper.id: paper for paper in papers}
     paper_id_to_list_id = {paper.id: i for i, paper in enumerate(papers)}
     paper_ids = set(paper_id_to_paper.keys())
-    print("paper ids:", len(paper_ids))
 
     return _import_template('papers', lambda e: Paper(e))

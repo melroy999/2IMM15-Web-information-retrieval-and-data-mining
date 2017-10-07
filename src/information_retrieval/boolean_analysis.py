@@ -58,6 +58,10 @@ class Node:
         if self.value == "not":
             return "not{" + str(len(self.papers)) + "} " + self.children[0].__str__()
 
+        if self.value == "in":
+            return "[" + self.children[1].value + " in " + self.children[0].value + "]" \
+                   + "{" + str(len(self.papers)) + "}"
+
         result = "( "
         for i, child in enumerate(self.children):
             result += child.__str__()
@@ -99,8 +103,11 @@ def create_parse_subtree(token_nodes):
     # First find subsets in the tokens array that are contained by brackets, and process them as a subtree.
     process_brackets_as_subtrees(token_nodes, visited_stack)
 
+    # First, merge in operator nodes with their values.
+    processed_nodes_stack = process_in_operators(visited_stack)
+
     # First, merge not operator nodes with their values.
-    processed_nodes_stack = process_not_operators(visited_stack)
+    processed_nodes_stack = process_not_operators(processed_nodes_stack)
 
     # With the not operators abstracted, we can start making subtrees of the and/or operator and their associated nodes.
     # We should put priority on making the subtrees for and groups first, as we can have multiple occurrences.
@@ -144,11 +151,16 @@ def process_brackets_as_subtrees(token_nodes, visited_stack):
             visited_stack.push(node)
 
 
-def process_not_operators(visited_stack):
+def process_in_operators(visited_stack):
+    # Use the template with the keyword "in", which will group up all ins and convert them to subtrees.
+    return process_and_or_operators_template(visited_stack, "in")
+
+
+def process_not_operators(token_stack):
     # Combine all not nodes with their successor, except for when we have two not nodes after each other.
     # We want to start at the start of the stack, so we want to iterate over the stack in reverse order.
     # I.e. we take from the bottom instead of the top of the stack.
-    simplified_token_nodes = visited_stack.reverse()
+    simplified_token_nodes = token_stack.reverse()
     processed_nodes = Stack()
     while not simplified_token_nodes.is_empty():
         token_node = simplified_token_nodes.pop()
@@ -255,13 +267,17 @@ def search(query, indexer, field):
     print("Solved:", parse_tree)
     print()
 
+    # Now that we have solved the tree, we can take the result from the top node.
+    resulting_paper_ids = parse_tree.papers
+    return [database.paper_id_to_paper[paper_id] for paper_id in resulting_paper_ids]
 
-def solve_tree_recursively(node, field, indexer):
+
+def solve_tree_recursively(node, default_field, indexer):
     # We want to go as deep as possible before going up, so do the recursive call first.
     for child in node.children:
-        solve_tree_recursively(child, field, indexer)
+        solve_tree_recursively(child, default_field, indexer)
 
-    # We only want to take action if the node is an and/or/not operator.
+    # We only want to take action if the node is an and/or/not/in operator.
     if node.value == "not":
         # In case of a not, we have to do a set minus of the complete paper_id space.
         child_node = node.children[0]
@@ -278,20 +294,33 @@ def solve_tree_recursively(node, field, indexer):
         solve_and_operator(node)
         pass
     else:
-        # We will have ended up at a leaf node. If so, calculate the value associated with it.
-        # This is a leaf node, so check the keyword and fetch the statistics from the indexer.
-        frequency_data = indexer.results[field][0]
+        # We will also handle the in operator here, as they both are related to calculating the solution.
+        # If the parent is in, we want to do nothing, as the calculation time would be wasted.
+        if node.parent is not None and node.parent.value == "in":
+            # Skip!
+            return
 
-        # The term we want to find in the frequency table.
-        term = node.value
+        # Now we have to check whether this is a leaf node or an in node.
+        if node.value == "in":
+            # The value is the first child, and the parent is the second child.
+            field = node.children[0].value
+            value = node.children[1].value
+            extract_papers_from_index(field, indexer, node, value)
+        else:
+            # We will have ended up at a leaf node. If so, calculate the value associated with it.
+            extract_papers_from_index(default_field, indexer, node, node.value)
 
-        # Iterate over all papers.
-        for i, paper in enumerate(database.papers):
-            if frequency_data[i][0][term] > 0:
-                node.papers.add(i)
 
-        # Report on what we found.
-        print("Term \"" + term + "\" occurs in " + str(len(node.papers)) + " papers.")
+def extract_papers_from_index(field, indexer, node, term):
+    frequency_data = indexer.results[field][0]
+
+    # Iterate over all papers.
+    for i, paper in enumerate(database.papers):
+        if frequency_data[i][0][term] > 0:
+            node.papers.add(i)
+
+    # Report on what we found.
+    print("Term \"" + term + "\" in field \"" + field + "\" occurs in " + str(len(node.papers)) + " papers.")
 
 
 def solve_and_operator(node):
@@ -318,16 +347,3 @@ def solve_or_operator(node):
     # Now iterate over all other sets in order, skipping 0.
     for i in range(1, len(set_collection)):
         node.papers = node.papers.union(set_collection[i])
-
-
-if __name__ == '__main__':
-    indexer = Indexer()
-    indexer.full_index("None", True, None)
-    search("help and not (warcraft and cookies and food or (partner or cheese and pepper))", indexer, "paper_text")
-    search("help and not not (warcraft and cookies and food or partner or cheese and pepper)", indexer, "paper_text")
-    search("help or not cookie", indexer, "paper_text")
-    search("help and not cookie or cookies", indexer, "paper_text")
-    search("help and not cookie", indexer, "paper_text")
-    search("help and (not cookie and (cookie_cutter and not (blueberries and cheese)))", indexer, "paper_text")
-    search("help or (not cookie and (cookie_cutter and (blueberries or cheese)))", indexer, "paper_text")
-    search("not chicken and neural", indexer, "paper_text")
