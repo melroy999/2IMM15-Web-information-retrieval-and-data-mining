@@ -82,6 +82,10 @@ class Normalizer:
 
     # Check whether the term is a stop word.
     def is_valid_term(self, term):
+        # Terms that start with (multiple) 0s are rarely useful.
+        if term.startswith("0"):
+            return False
+
         return not self.use_stopwords or not english_stopwords.__contains__(term)
 
 
