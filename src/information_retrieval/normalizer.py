@@ -1,6 +1,7 @@
 import pickle
 import string
 
+import unicodedata
 from nltk.stem.wordnet import WordNetLemmatizer
 
 # Different lemmatizers we can use.
@@ -82,12 +83,12 @@ class Normalizer:
 
     # Check whether the term is a stop word.
     def is_valid_term(self, term):
-        # Terms that start with (multiple) 0s are rarely useful.
-        if term.startswith("0"):
-            return False
-
         return not self.use_stopwords or not english_stopwords.__contains__(term)
 
+    # Remove control characters from the text.
+    @staticmethod
+    def remove_control_characters(text):
+        return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
 
 # A list of english stop words.
 english_stopwords = {'a', 'able', 'about', 'across', 'after', 'all', 'almost', 'also', 'am', 'among', 'an', 'and',

@@ -3,8 +3,8 @@ The following structure is adhered to in the indexing:
 {
     "N": int,
     "papers": {
-        $paper_id: {
-            $field: {
+        $field: {
+            $paper_id: {
                 "number_of_terms": int,
                 "number_of_unique_terms": int,
                 "frequencies": { -> This is a DataFrame
