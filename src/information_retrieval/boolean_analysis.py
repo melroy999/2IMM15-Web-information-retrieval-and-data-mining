@@ -333,11 +333,11 @@ def solve_tree_recursively(node, default_field, indexer):
 
 
 def extract_papers_from_index(field, indexer, node, term):
-    frequency_data = indexer.results[field][0]
+    frequency_data = indexer.results["papers"][field]
 
     # Iterate over all papers.
-    for i, paper in enumerate(database.papers):
-        if frequency_data[i][0][term] > 0:
+    for paper in database.papers:
+        if frequency_data[paper.id]["tf"][term] > 0:
             node.papers.add(paper.id)
 
     # Report on what we found.
