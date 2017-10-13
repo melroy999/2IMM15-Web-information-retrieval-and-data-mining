@@ -5,11 +5,8 @@ from multiprocessing.pool import Pool
 import time
 import math
 import gc
-import json
 import numpy
 import pickle
-
-import sys
 
 from import_data import database
 
@@ -36,9 +33,6 @@ def load_table_file(filename):
     with open(filename + ".pickle", "rb") as input_file:
         print("Pre-calculated data file found!")
         return pickle.load(input_file)
-
-
-
 
 
 class Indexer(object):

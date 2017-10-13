@@ -7,77 +7,77 @@ import math
 
 from import_data import database
 
-scoring_measures = {"tf": 0, "wf": 1, "tf.idf": 2, "wf.idf": 3}
+scoring_measures = ["tf", "wf", "tf_idf", "wf_idf"]
 
 
-def cosine_similarity(target_collection, target_collection_length, candidate_collection,
-                      candidate_collection_length):
+def cosine_similarity(target_frequencies, target_vector_length, candidate_frequencies,
+                      candidate_vector_length):
     # Find which of the two has the least terms, and use that collection as iteration base.
-    if len(candidate_collection) > len(target_collection):
-        iteration_collection = target_collection.keys()
+    if len(candidate_frequencies) > len(target_frequencies):
+        iteration_collection = target_frequencies.keys()
     else:
-        iteration_collection = candidate_collection.keys()
+        iteration_collection = candidate_frequencies.keys()
 
     # Iterate over all terms in the collection, and calculate the score.
     dot_product = 0
     for term in iteration_collection:
-        dot_product += target_collection[term] * candidate_collection[term]
+        dot_product += target_frequencies[term] * candidate_frequencies[term]
 
     # Normalize the result by using the length of the document vectors.
-    normalization_factor = target_collection_length * candidate_collection_length
+    normalization_factor = target_vector_length * candidate_vector_length
 
     # Report the score.
     return dot_product / normalization_factor
 
 
-def cosine_paper_similarity(indexer_results, field, list_id_target, list_id_candidate, scoring_measure_id):
+def cosine_paper_similarity(data, field, target_paper_id, candidate_paper_id, scoring_measure):
     # First get the tf or wf values.
-    tf_wf_collection = indexer_results[field][0]
-    target_collection = tf_wf_collection[list_id_target][scoring_measure_id % 4]
-    target_collection_length = tf_wf_collection[list_id_target][4 + scoring_measure_id % 4]
-    candidate_collection = tf_wf_collection[list_id_candidate][scoring_measure_id % 4]
-    candidate_collection_length = tf_wf_collection[list_id_candidate][4 + scoring_measure_id % 4]
+    papers_data = data["papers"][field]
+    target_frequencies = papers_data[target_paper_id][scoring_measure]
+    target_vector_length = papers_data[target_paper_id]["vector_lengths"][scoring_measure]
+    candidate_frequencies = papers_data[candidate_paper_id][scoring_measure]
+    candidate_vector_length = papers_data[candidate_paper_id]["vector_lengths"][scoring_measure]
 
     # Report the score.
-    return cosine_similarity(target_collection, target_collection_length, candidate_collection,
-                             candidate_collection_length)
+    return cosine_similarity(target_frequencies, target_vector_length, candidate_frequencies,
+                             candidate_vector_length)
 
 
-def cosine_query_similarity(indexer_results, field, query_collection, query_collection_length,
-                            list_id_candidate, scoring_measure_id):
+def cosine_query_similarity(data, field, query_collection, query_collection_length,
+                            candidate_paper_id, scoring_measure):
     # First get the tf or wf values.
-    tf_wf_collection = indexer_results[field][0]
-    candidate_collection = tf_wf_collection[list_id_candidate][scoring_measure_id % 4]
-    candidate_collection_length = tf_wf_collection[list_id_candidate][4 + scoring_measure_id % 4]
+    paper_frequency_data = data["papers"][field][candidate_paper_id]
+    candidate_frequencies = paper_frequency_data[scoring_measure]
+    candidate_vector_length = paper_frequency_data["vector_lengths"][scoring_measure]
 
-    return cosine_similarity(query_collection, query_collection_length, candidate_collection,
-                             candidate_collection_length)
+    return cosine_similarity(query_collection, query_collection_length, candidate_frequencies,
+                             candidate_vector_length)
 
 
 class EmptyQueryException(Exception):
     pass
 
 
-def query_papers_search(query, indexer, field, scoring_measure_id):
+def query_papers_search(query, indexer, field, scoring_measure):
     # First normalize and tokenize the query.
     query_frequency_data = indexer.index_query(query)
 
     # The query can end up empty because of tokenization. So throw an exception of this is the case.
-    if len(query_frequency_data[0]) == 0:
+    if len(query_frequency_data["tf"]) == 0:
         raise EmptyQueryException()
 
     # We first have to calculate the tf.idf and wf.idf components.
-    query_frequency_data = indexer.calculate_tf_idf(query_frequency_data, indexer.results[field][1])
+    indexer.calc_tf_idf_and_wf_idf(indexer.results["collection"][field]["idf"], query_frequency_data)
 
     # Get the tf or wf value, depending on the comparison mode.
-    query_collection = query_frequency_data[scoring_measure_id % 4]
-    query_collection_length = query_frequency_data[4 + scoring_measure_id % 4]
+    query_frequencies = query_frequency_data[scoring_measure]
+    query_vector_length = query_frequency_data["vector_lengths"][scoring_measure]
 
     # Iterate over all papers, and gather the scores.
     scores = {}
-    for i, paper in enumerate(database.papers):
-        score = cosine_query_similarity(indexer.results, field, query_collection, query_collection_length,
-                                        i, scoring_measure_id)
+    for paper in database.papers:
+        score = cosine_query_similarity(indexer.results, field, query_frequencies,
+                                        query_vector_length, paper.id, scoring_measure)
 
         # Filter out scores that are close to zero.
         if not math.isclose(score, 0.0, abs_tol=1e-19):
@@ -87,13 +87,13 @@ def query_papers_search(query, indexer, field, scoring_measure_id):
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
-def similar_papers_search(query, indexer, field, scoring_measure_id):
+def similar_papers_search(query, indexer, field, scoring_measure):
     try:
         # Check if the query is an int.
         paper_list_id = database.paper_id_to_list_id[int(query)]
     except ValueError:
         # Do a query search and find the most appropriate paper.
-        target_paper_scores = query_papers_search(query, indexer, "title", scoring_measure_id)
+        target_paper_scores = query_papers_search(query, indexer, "title", scoring_measure)
 
         # Select the best paper. It may not exist.
         try:
@@ -109,7 +109,7 @@ def similar_papers_search(query, indexer, field, scoring_measure_id):
     # Iterate over all papers, and gather the scores.
     scores = {}
     for i, paper in enumerate(database.papers):
-        score = cosine_paper_similarity(indexer.results, field, paper_list_id, i, scoring_measure_id)
+        score = cosine_paper_similarity(indexer.results, field, paper_list_id, i, scoring_measure)
 
         # Filter out scores that are close to zero.
         if not math.isclose(score, 0.0, abs_tol=1e-19):
@@ -119,13 +119,10 @@ def similar_papers_search(query, indexer, field, scoring_measure_id):
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
-def search(query, indexer, field, scoring_measure="tf", similar_document_search=False):
-    # Get the measure id.
-    scoring_measure_id = scoring_measures[scoring_measure]
-
+def search(query, indexer, field, scoring_measure=scoring_measures[0], similar_document_search=False):
     if similar_document_search:
         # Search for similar papers. First find the target paper.
-        return similar_papers_search(query, indexer, field, scoring_measure_id)
+        return similar_papers_search(query, indexer, field, scoring_measure)
     else:
         # Search for query.
-        return query_papers_search(query, indexer, field, scoring_measure_id)
+        return query_papers_search(query, indexer, field, scoring_measure)
