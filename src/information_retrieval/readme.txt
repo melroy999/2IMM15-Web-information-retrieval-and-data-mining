@@ -7,10 +7,8 @@ The following structure is adhered to in the indexing:
             $paper_id: {
                 "number_of_terms": int,
                 "number_of_unique_terms": int,
-                "frequencies": { -> This is a DataFrame
-                    "tf", -> so a specific term can be found with ["tf"][$term]
-                    "wf"
-                },
+                "tf": dict,
+                "wf": dict,
                 "vector_lengths": {
                     "tf": int
                     "wf": float
@@ -22,11 +20,9 @@ The following structure is adhered to in the indexing:
         $field: {
             "number_of_terms": int,
             "number_of_unique_terms": int,
-            "frequencies": { -> This is a DataFrame
-                "cf", 
-                "df",
-                "idf"
-            },
+            "cf": dict,
+            "df": dict,
+            "idf": dict,
             "vector_lengths": {
                 "cf": int
                 "df": int

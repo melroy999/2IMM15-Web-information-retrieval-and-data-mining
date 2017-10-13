@@ -34,12 +34,21 @@ class Indexer(object):
         except TypeError:
             pass
 
+    @staticmethod
+    def normalize_and_tokenize(text, normalizer):
+        # Remove punctuation and convert to lowercase.
+        text = normalizer.remove_punctuation(text.lower())
+
+        # Removing control characters takes quite long, so do it last, when we already have less characters.
+        text = normalizer.remove_control_characters(text)
+
+        # Create tokens.
+        return text.split()
+
     # Process the term frequencies of the given text.
     @staticmethod
     def process_text(text, normalizer):
-        lowercase = text.lower()
-        no_punctuation = normalizer.remove_punctuation(lowercase)
-        tokens = no_punctuation.split()
+        tokens = Indexer.normalize_and_tokenize(text, normalizer)
 
         # Generate the tf frequencies, with stemming and stopwords.
         tf = Indexer.calculate_tf(tokens, normalizer)
@@ -193,3 +202,9 @@ class Indexer(object):
     def __init__(self):
         # Load the papers.
         database.import_papers()
+
+
+if __name__ == "__main__":
+    indexer = Indexer()
+    indexer.full_index("None", True, None)
+    f = indexer.results

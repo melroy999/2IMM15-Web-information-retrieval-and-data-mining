@@ -5,9 +5,11 @@ from multiprocessing.pool import Pool
 import time
 import math
 import gc
-import pandas as p
+import json
 import numpy
 import pickle
+
+import sys
 
 from import_data import database
 
@@ -34,6 +36,9 @@ def load_table_file(filename):
     with open(filename + ".pickle", "rb") as input_file:
         print("Pre-calculated data file found!")
         return pickle.load(input_file)
+
+
+
 
 
 class Indexer(object):
@@ -65,7 +70,6 @@ class Indexer(object):
         return text.split()
 
     # Calculate the term frequencies of the tokens, with the given normalizer.
-    # Save it as a DataFrame, in which all other measures are initialized as 0.
     @staticmethod
     def calculate_tf(tokens, normalizer):
         tf = defaultdict(int)
@@ -73,7 +77,7 @@ class Indexer(object):
             if normalizer.is_valid_term(term):
                 norm_term = normalizer.normalize(term)
                 tf[norm_term] = tf[norm_term] + value
-        return p.DataFrame({"tf": tf, "wf": 0})
+        return tf
 
     # Process the term frequencies of the given text.
     @staticmethod
@@ -85,23 +89,25 @@ class Indexer(object):
         tokens = Indexer.normalize_and_tokenize(text, normalizer)
 
         # Generate the tf frequencies, with stemming and stopwords.
-        frequency_data = Indexer.calculate_tf(tokens, normalizer)
+        tf = Indexer.calculate_tf(tokens, normalizer)
 
         # Calculate the wf measure.
-        frequency_data["wf"] = 1 + numpy.log10(frequency_data["tf"])
+        # noinspection PyArgumentList
+        wf = defaultdict(int, {term: 1 + math.log10(value) for term, value in tf.items()})
 
         # Store the frequency under the key frequencies in the data.
-        data["frequencies"] = frequency_data
+        data["tf"] = tf
+        data["wf"] = wf
 
         # Calculate the vector lengths of the tf and wf measures, and store it under the key vector_lengths.
         data["vector_lengths"] = {
-            "tf": math.sqrt(sum(frequency_data["tf"]**2)),
-            "wf": math.sqrt(sum(frequency_data["wf"]**2))
+            "tf": math.sqrt(sum([x**2 for x in tf.values()])),
+            "wf": math.sqrt(sum([x**2 for x in wf.values()])),
         }
 
         # Also store the other information we have about the paper, such as the #terms and #unique terms.
-        data["number_of_terms"] = sum(frequency_data["tf"])
-        data["number_of_unique_terms"] = len(frequency_data["tf"])
+        data["number_of_terms"] = sum(tf.values())
+        data["number_of_unique_terms"] = len(tf)
 
         # Return the data dictionary containing all information about the text.
         return data
@@ -142,34 +148,58 @@ class Indexer(object):
         # We have more than just data point in the collection, so we need another dictionary.
         data = {}
 
-        cf_data = defaultdict(int)
-        df_data = defaultdict(int)
+        cf = defaultdict(int)
+        df = defaultdict(int)
         for paper_frequencies in paper_frequency_data.values():
-            for term, value in paper_frequencies["frequencies"]["tf"].items():
-                cf_data[term] += value
-                df_data[term] += 1
-
-        # Convert the above collection to a DataFrame.
-        frequency_data = p.DataFrame({"cf": cf_data, "df": df_data, "idf": 0})
+            for term, value in paper_frequencies["tf"].items():
+                cf[term] += value
+                df[term] += 1
 
         # Now, calculate the idf.
-        frequency_data["idf"] = numpy.log10(len(database.papers) / frequency_data["df"])
+        # noinspection PyArgumentList
+        idf = defaultdict(int, {term: numpy.log10(len(database.papers) / value) for term, value in df.items()})
 
         # Assign the frequency data under the key "frequencies"
-        data["frequencies"] = frequency_data
+        data["cf"] = cf
+        data["df"] = df
+        data["idf"] = idf
 
         # Calculate the vector lengths and other statistics that might be useful.
         data["vector_lengths"] = {
-            "cf": math.sqrt(sum(frequency_data["cf"] ** 2)),
-            "df": math.sqrt(sum(frequency_data["df"] ** 2)),
-            "idf": math.sqrt(sum(frequency_data["idf"] ** 2))
+            "cf": math.sqrt(sum([x**2 for x in cf.values()])),
+            "df": math.sqrt(sum([x**2 for x in df.values()])),
+            "idf": math.sqrt(sum([x**2 for x in idf.values()])),
         }
 
-        data["number_of_terms"] = sum(frequency_data["cf"])
-        data["number_of_unique_terms"] = len(frequency_data["cf"])
+        data["number_of_terms"] = sum(cf.values())
+        data["number_of_unique_terms"] = len(cf)
 
         # Return the gathered data.
         return data
+
+    @staticmethod
+    def calc_tf_idf_wf_idf(idf, paper_frequency_data):
+        # Update the tf idf in papers.
+        for paper_id, values in paper_frequency_data.items():
+            tf_idf = defaultdict(int)
+            wf_idf = defaultdict(int)
+
+            tf_idf_length = 0
+            for term, value in values["tf"].items():
+                val = tf_idf[term] = value * idf[term]
+                tf_idf_length += val ** 2
+
+            wf_idf_length = 0
+            for term, value in values["wf"].items():
+                val = wf_idf[term] = value * idf[term]
+                wf_idf_length += val ** 2
+
+            values["tf_idf"] = tf_idf
+            values["wf_idf"] = wf_idf
+
+            # Calculate the vector lengths.
+            values["vector_lengths"]["tf_idf"] = tf_idf_length
+            values["vector_lengths"]["wf_idf"] = wf_idf_length
 
     # Index a certain field for all the papers, with multiprocessing when defined.
     def index(self, papers, normalizer):
@@ -185,9 +215,6 @@ class Indexer(object):
             self.update_status("Indexing field \"" + field + "\"... gathering collection frequencies...")
             data["collection"][field] = self.calculate_collection_data(papers_data)
 
-            # Next, update the paper data to also contain idf results.
-            # TODO
-
             # Report on the amount of terms found for the field.
             number_of_unique_terms = data["collection"][field]["number_of_unique_terms"]
             print("Found", number_of_unique_terms, "unique terms for the field \"" + field + "\".")
@@ -198,6 +225,13 @@ class Indexer(object):
     def reset(self):
         self.results = None
         gc.collect()
+
+    def calculate_missing_measures(self):
+        for field in paper_fields:
+            idf = self.results["collection"][field]["idf"]
+
+            # Calculate the missing measures afterwards, as we don't want to store them.
+            self.calc_tf_idf_wf_idf(idf, self.results["papers"][field])
 
     # Calculate a full index of the papers.
     # This includes the fields: paper_text, abstract, title
@@ -227,15 +261,23 @@ class Indexer(object):
             self.normalizer.create_table_file()
 
             # Create a cheat file for the entire index data.
-            filename = "../../data/calc_" + self.normalizer.operator_name.lower().replace(" ", "_")
-            print("Storing indexing data found in file \"" + filename + ".pickle\".")
-            create_table_file(filename, self.results)
+            self.write_index_to_disk()
+
+        # We still need to calculate some missing measures that would not have been stored in the table.
+        self.calculate_missing_measures()
 
         # Report the time.
         print()
         print("Finished indexing in", time.time() - start, "seconds.")
         self.update_status("Finished indexing.")
         print()
+
+    def write_index_to_disk(self):
+        print("Storing indexing data on disk for later use.")
+
+        normalizer_name = self.normalizer.operator_name.lower().replace(" ", "_")
+        filename = "../../data/calc_" + normalizer_name
+        create_table_file(filename, self.results)
 
     # During indexing of a query, do the exact same to the query as would be done with the paper contents.
     def index_query(self, query):
@@ -248,13 +290,11 @@ class Indexer(object):
         database.import_papers()
 
 
-def sanity_check(data):
-    print(data["collection"]["paper_text"])
-
 if __name__ == "__main__":
     indexer = Indexer()
     indexer.full_index("None", True, None)
     f = indexer.results
 
-    sanity_check(f)
-    #print(f["collection"]["paper_text"]["frequencies"])
+    print(len(f["papers"]["paper_text"][1]["tf"]))
+    print(len(f["papers"]["paper_text"][1]["tf_idf"]))
+    print(f["papers"]["paper_text"][1]["vector_lengths"])
