@@ -65,6 +65,10 @@ class Node:
             return "[" + self.children[1].value + " in " + self.children[0].value + "]" \
                    + "{" + str(len(self.papers)) + "}"
 
+        if self.value in comparison_table:
+            return "[" + self.children[1].value + " " + self.value + " " + self.children[0].value + "]" \
+                   + "{" + str(len(self.papers)) + "}"
+
         result = "( "
         for i, child in enumerate(self.children):
             result += child.get_value_string()
@@ -83,6 +87,9 @@ class Node:
         if self.value == "in":
             return "[" + self.children[1].value + " in " + self.children[0].value + "]"
 
+        if self.value in comparison_table:
+            return "[" + self.children[1].value + " " + self.value + " " + self.children[0].value + "]"
+
         result = "( "
         for i, child in enumerate(self.children):
             result += child.__str__()
@@ -92,7 +99,15 @@ class Node:
         return result
 
 
-non_normalize_terms = {"(", ")", "and", "or", "not"}
+non_normalize_terms = {"(", ")", "and", "or", "not", "in", "=", ">", "<", ">=", "<="}
+comparison_table = {
+    "=": lambda x, y: x == y,
+    ">": lambda x, y: x >= y,
+    "<": lambda x, y: x <= y,
+    ">=": lambda x, y: x >= y,
+    "<=": lambda x, y: x <= y
+}
+compound_leaf_nodes = {"in", "=", ">", "<", ">=", "<="}
 
 
 def create_parse_tree(query, indexer):
@@ -127,7 +142,10 @@ def create_parse_subtree(token_nodes):
     # First, merge in operator nodes with their values.
     processed_nodes_stack = process_in_operators(visited_stack)
 
-    # First, merge not operator nodes with their values.
+    # Merge comparison operators.
+    processed_nodes_stack = process_comparison_operators(processed_nodes_stack)
+
+    # Merge not operator nodes with their values.
     processed_nodes_stack = process_not_operators(processed_nodes_stack)
 
     # With the not operators abstracted, we can start making subtrees of the and/or operator and their associated nodes.
@@ -175,6 +193,13 @@ def process_brackets_as_subtrees(token_nodes, visited_stack):
 def process_in_operators(visited_stack):
     # Use the template with the keyword "in", which will group up all ins and convert them to subtrees.
     return process_and_or_operators_template(visited_stack, "in")
+
+
+def process_comparison_operators(visited_stack):
+    # Use the template with all of the comparison keywords.
+    for operator in comparison_table:
+        visited_stack = process_and_or_operators_template(visited_stack, operator)
+    return visited_stack
 
 
 def process_not_operators(token_stack):
@@ -316,17 +341,22 @@ def solve_tree_recursively(node, default_field, indexer):
         pass
     else:
         # We will also handle the in operator here, as they both are related to calculating the solution.
-        # If the parent is in, we want to do nothing, as the calculation time would be wasted.
-        if node.parent is not None and node.parent.value == "in":
+        # If the parent is in or a comparator, we want to do nothing, as the calculation time would be wasted.
+        if node.parent is not None and compound_leaf_nodes.__contains__(node.parent.value):
             # Skip!
             return
 
-        # Now we have to check whether this is a leaf node or an in node.
+        # Now we have to check whether this is a leaf node or an in node or an comparator node.
         if node.value == "in":
             # The value is the first child, and the parent is the second child.
             field = node.children[0].value
             value = node.children[1].value
             extract_papers_from_index(field, indexer, node, value)
+        if node.value in comparison_table:
+            # The value is the second child, and the parent is the first child.
+            field = node.children[1].value
+            value = node.children[0].value
+            extract_papers_from_index_with_comparator(indexer, node, value, field)
         else:
             # We will have ended up at a leaf node. If so, calculate the value associated with it.
             extract_papers_from_index(default_field, indexer, node, node.value)
@@ -342,6 +372,20 @@ def extract_papers_from_index(field, indexer, node, term):
 
     # Report on what we found.
     print("Term \"" + term + "\" in field \"" + field + "\" occurs in " + str(len(node.papers)) + " papers.")
+
+
+def extract_papers_from_index_with_comparator(indexer, node, value, term):
+    # It does not matter which term we check for here.
+    frequency_data = indexer.results["papers"]["title"]
+
+    # Iterate over all papers.
+    for paper in database.papers:
+        # Check if the given field is correct according to the comparator.
+        if comparison_table[node.value](frequency_data[paper.id][term], int(value)):
+            node.papers.add(paper.id)
+
+    # Report on what we found.
+    print("Comparator \"" + term, node.value, value + "\" holds for " + str(len(node.papers)) + " papers.")
 
 
 def solve_and_operator(node):

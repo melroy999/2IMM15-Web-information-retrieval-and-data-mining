@@ -114,6 +114,9 @@ class Indexer(object):
 
         # Having the id in there is useful for debugging purposes.
         data["paper_id"] = paper.id
+
+        # We are also interested in other data, like the year of the paper.
+        data["year"] = int(paper.year)
         return data
 
     # Calculate the initial data we can gather from the papers for the given field.
@@ -280,6 +283,8 @@ class Indexer(object):
             self.write_index_to_disk()
 
         # We still need to calculate some missing measures that would not have been stored in the table.
+        print("Calculating tf.idf and wf.idf measures.")
+        self.update_status("Calculating tf.idf and wf.idf measures.")
         self.calculate_missing_measures()
 
         # Report the time.
@@ -289,6 +294,7 @@ class Indexer(object):
         print()
 
     def write_index_to_disk(self):
+        self.update_status("Storing indexing data on disk...")
         print("Storing indexing data on disk for later use.")
 
         normalizer_name = self.normalizer.operator_name.lower().replace(" ", "_")
@@ -302,8 +308,8 @@ class Indexer(object):
 
     # Initializes the indexer.
     def __init__(self):
-        # Load the papers.
-        database.import_papers()
+        # Load the papers and authors.
+        database.import_data()
 
 
 if __name__ == "__main__":
