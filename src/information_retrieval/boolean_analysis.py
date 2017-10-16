@@ -122,7 +122,7 @@ def create_parse_tree(query, indexer):
 
     # We still have to normalize the terms in the query.
     for i, term in enumerate(query_tokens):
-        if not non_normalize_terms.__contains__(query_tokens[i]):
+        if query_tokens[i] not in non_normalize_terms:
             query_tokens[i] = indexer.normalizer.normalize(term)
 
     # Convert all the tokens to nodes, to be consistent.
@@ -342,7 +342,7 @@ def solve_tree_recursively(node, default_field, indexer):
     else:
         # We will also handle the in operator here, as they both are related to calculating the solution.
         # If the parent is in or a comparator, we want to do nothing, as the calculation time would be wasted.
-        if node.parent is not None and compound_leaf_nodes.__contains__(node.parent.value):
+        if node.parent is not None and node.parent.value in compound_leaf_nodes:
             # Skip!
             return
 

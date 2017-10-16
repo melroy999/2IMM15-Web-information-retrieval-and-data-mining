@@ -71,7 +71,7 @@ class Normalizer:
         if not self.use_stopwords:
             return True
         else:
-            return not english_stopwords.__contains__(term)
+            return term not in english_stopwords
 
 
 # A list of english stop words.

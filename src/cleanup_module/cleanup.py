@@ -122,7 +122,7 @@ class _Cleanup:
                 return None
 
         # If the word is in the world list, we can be sure that it is valid.
-        if self.word_list.__contains__(lower_case_token):
+        if lower_case_token in self.word_list:
             self.scratch_list["word_list"] += 1
             return lower_case_token
 
@@ -182,20 +182,20 @@ class _Cleanup:
 
         # Some papers seem to use a terrible version of english german. Try to replace all v with w.
         w_lower_case_token = lower_case_token.replace("v", "w")
-        if self.word_list.__contains__(w_lower_case_token):
+        if w_lower_case_token in self.word_list:
             self.scratch_list["is_bad_german_vord_altering"] += 1
             return w_lower_case_token
 
         # A lot of papers seem to have random spaces everywhere between certain words...
         # Recen tly, dissimilari ty, sampl es, su bstitu te, compu ters, etc
         if prev_token is not None and next_token is not None:
-            if self.word_list.__contains__(prev_token + lower_case_token + next_token):
+            if prev_token + lower_case_token + next_token in self.word_list:
                 self.scratch_list["superglue_both_sides"] += 1
                 return prev_token + lower_case_token + next_token
-            if self.word_list.__contains__(lower_case_token + next_token):
+            if lower_case_token + next_token in self.word_list:
                 self.scratch_list["superglue_right_side"] += 1
                 return lower_case_token + next_token
-            if self.word_list.__contains__(prev_token + lower_case_token):
+            if prev_token + lower_case_token in self.word_list:
                 self.scratch_list["superglue_left_side"] += 1
                 return prev_token + lower_case_token
 
@@ -203,7 +203,7 @@ class _Cleanup:
         for char, candidates in homoglyphs.items():
             for candidate in candidates:
                 candidate_word = lower_case_token.replace(char, candidate)
-                if self.word_list.__contains__(candidate_word):
+                if candidate_word in self.word_list:
                     self.scratch_list["homoglyphs"] += 1
                     return candidate_word
 
@@ -219,7 +219,7 @@ class _Cleanup:
 
         # Use a spelling corrector and see if the word exists afterwards.
         spelling_correction = sp.correction(lower_case_token)
-        if self.word_list.__contains__(spelling_correction):
+        if spelling_correction in self.word_list:
             self.scratch_list["spelling_correction"] += 1
             return spelling_correction
 

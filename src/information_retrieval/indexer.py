@@ -1,7 +1,11 @@
 import gc
+import json
 from collections import Counter, defaultdict
 
 import time
+import math
+
+import pickle
 
 from import_data import database
 import cleanup_module.cleanup as cleanup
@@ -64,7 +68,7 @@ class Indexer(object):
     # Calculate the document vector length with respect to the frequencies given.
     @staticmethod
     def calc_vector_length(frequencies):
-        return math.sqrt(sum([v**2 for v in frequencies.values()]))
+        return math.sqrt(sum([v ** 2 for v in frequencies.values()]))
 
     # Get frequency statistics for the individual piece of text.
     def index_text(self, text):
@@ -141,76 +145,96 @@ class Indexer(object):
         # First set the normalizer.
         self.normalizer = Normalizer(normalizer_name, use_stopwords)
 
-        # The global results, in which we keep the collection and paper results separate.
-        self.results = {
-            "N": len(database.papers),
-            "papers": {},
-            "collection": {}
-        }
-
-        # We want to index all the papers, which are many fields.
-        # Since we don't want to switch our focus all the time, it might be best to loop over the fields first.
-        for field in paper_fields:
-
-            # The results found in this field of the paper.
-            paper_field_results = {}
-
-            # Now we can take a look at all the papers, and index every single one of them.
-            # In the meantime, we keep track of the df and df counters.
-            cf = defaultdict(int)
-            df = defaultdict(int)
-            self.update_status("Indexing field \"" + field + "\"... calculating paper frequencies...")
-            for paper in database.papers:
-                # Index the given field, and store the information in the corresponding field.
-                paper_field_results[paper.id] = self.index_field(paper, field)
-
-                # Update cf and df.
-                for term, value in paper_field_results[paper.id]["tf"].items():
-                    cf[term] += value
-                    df[term] += 1
-
-            # Now change df to idf.
-            self.update_status("Indexing field \"" + field + "\"... calculating idf...")
-            idf = defaultdict(int)
-            for term, value in df.items():
-                idf[term] = self.calc_idf(value)
-
-            # Add the paper results.
-            self.results["papers"][field] = paper_field_results
-
-            # Add the collection results.
-            self.results["collection"][field] = {
-                "cf": cf,
-                "df": df,
-                "idf": idf,
-                "vector_lengths": {
-                    "cf": self.calc_vector_length(cf),
-                    "df": self.calc_vector_length(df),
-                    "idf": self.calc_vector_length(idf),
-                },
-                "number_of_unique_terms": len(cf),
-                "number_of_terms": sum(cf.values())
+        # Attempt to import the results.
+        try:
+            self.results = self.load_table_file()
+        except FileNotFoundError:
+            # The global results, in which we keep the collection and paper results separate.
+            self.results = {
+                "N": len(database.papers),
+                "papers": {},
+                "collection": {}
             }
 
-            # Update the paper measures.
-            self.update_status("Indexing field \"" + field + "\"... calculating tf.idf and wf.idf measures...")
-            for paper_id, value in paper_field_results.items():
-                self.update_text_result(value, idf)
+            # We want to index all the papers, which are many fields.
+            # Since we don't want to switch our focus all the time, it might be best to loop over the fields first.
+            for field in paper_fields:
 
-            # Report on the amount of terms found for the field.
-            number_of_unique_terms = self.results["collection"][field]["number_of_unique_terms"]
-            print("Found", number_of_unique_terms, "unique terms for the field \"" + field + "\".")
+                # The results found in this field of the paper.
+                paper_field_results = {}
 
-        # Store the normalizer table file for later use.
-        self.normalizer.create_table_file()
+                # Now we can take a look at all the papers, and index every single one of them.
+                # In the meantime, we keep track of the df and df counters.
+                cf = defaultdict(int)
+                df = defaultdict(int)
+                self.update_status("Indexing field \"" + field + "\"... calculating paper frequencies...")
+                for paper in database.papers:
+                    # Index the given field, and store the information in the corresponding field.
+                    paper_field_results[paper.id] = self.index_field(paper, field)
+
+                    # Update cf and df.
+                    for term, value in paper_field_results[paper.id]["tf"].items():
+                        cf[term] += value
+                        df[term] += 1
+
+                # Now change df to idf.
+                self.update_status("Indexing field \"" + field + "\"... calculating idf...")
+                idf = defaultdict(int)
+                for term, value in df.items():
+                    idf[term] = self.calc_idf(value)
+
+                # Add the paper results.
+                self.results["papers"][field] = paper_field_results
+
+                # Add the collection results.
+                self.results["collection"][field] = {
+                    "cf": cf,
+                    "df": df,
+                    "idf": idf,
+                    "vector_lengths": {
+                        "cf": self.calc_vector_length(cf),
+                        "df": self.calc_vector_length(df),
+                        "idf": self.calc_vector_length(idf),
+                    },
+                    "number_of_unique_terms": len(cf),
+                    "number_of_terms": sum(cf.values())
+                }
+
+                # Update the paper measures.
+                self.update_status("Indexing field \"" + field + "\"... calculating tf.idf and wf.idf measures...")
+                for paper_id, value in paper_field_results.items():
+                    self.update_text_result(value, idf)
+
+                # Report on the amount of terms found for the field.
+                number_of_unique_terms = self.results["collection"][field]["number_of_unique_terms"]
+                print("Found", number_of_unique_terms, "unique terms for the field \"" + field + "\".")
+
+            # Store the normalizer table file for later use.
+            self.normalizer.create_table_file()
+
+            # Save the file.
+            self.create_table_file()
 
         # Report on how long the indexing took.
         print()
         print("Finished indexing in", time.time() - start, "seconds.")
         print()
 
+    # Dump the results for later use.
+    def create_table_file(self):
+        self.update_status("Storing index file...")
+        with open("../../data/results_" + self.normalizer.normalizer_name + "_" +
+                          str(self.normalizer.use_stopwords).lower() + ".pickle", "wb") as output_file:
+            pickle.dump(self.results, output_file)
 
-import math
+    # Load the results table from disk.
+    def load_table_file(self):
+        with open("../../data/results_" + self.normalizer.normalizer_name + "_" +
+                          str(self.normalizer.use_stopwords).lower() + ".pickle", "rb") as input_file:
+            self.update_status("Loading index file...")
+            print("Found a file containing the desired index. Importing now.")
+            return pickle.load(input_file)
+
 
 if __name__ == "__main__":
 
