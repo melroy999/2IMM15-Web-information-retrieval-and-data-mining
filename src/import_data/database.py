@@ -21,6 +21,9 @@ author_ids = set()
 # A mapping from author id to author.
 author_id_to_author = {}
 
+# A flag so that we don't import twice and override our cleaned data.
+has_imported = False
+
 
 class Author:
     """
@@ -53,6 +56,7 @@ class Paper:
         self.id = paper_data[0]
         self.year = paper_data[1]
         self.title = paper_data[2]
+        self.stored_title = paper_data[2]
         self.event_type = paper_data[3]
         self.pdf_name = paper_data[4]
         self.abstract = paper_data[5]
@@ -117,6 +121,11 @@ def _import_papers():
 
 
 def import_data():
+    global has_imported
+    if has_imported:
+        print("Already imported the database!")
+        return
+
     # First import the papers and authors.
     _import_authors()
     _import_papers()
@@ -132,3 +141,5 @@ def import_data():
 
         paper.authors.append(author.id)
         author.papers.append(paper.id)
+
+    has_imported = True
