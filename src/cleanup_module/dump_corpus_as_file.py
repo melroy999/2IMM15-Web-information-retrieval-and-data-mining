@@ -1,11 +1,8 @@
 import import_data.database as database
-
-database.import_data()
-
+import cleanup_module.cleanup
 
 # Create a cleanup instance so that we can use the special character removal there.
-import cleanup_module.cleanup
-cp = cleanup_module.cleanup.Cleanup(database)
+cp = cleanup_module.cleanup.get_cleanup_instance(database)
 
 # We should not dump all of the files. We only dump the x longest ones.
 papers = database.papers[:]

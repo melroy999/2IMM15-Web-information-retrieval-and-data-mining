@@ -9,9 +9,13 @@ The following structure is adhered to in the indexing:
                 "number_of_unique_terms": int,
                 "tf": dict,
                 "wf": dict,
+                "tf.idf": dict,
+                "wf.idf": dict,
                 "vector_lengths": {
-                    "tf": int
-                    "wf": float
+                    "tf": int,
+                    "wf": float,
+                    "tf.idf": float,
+                    "wf.idf": float
                 }
             }
         }
@@ -24,8 +28,8 @@ The following structure is adhered to in the indexing:
             "df": dict,
             "idf": dict,
             "vector_lengths": {
-                "cf": int
-                "df": int
+                "cf": int,
+                "df": int,
                 "idf": float
             }
         }

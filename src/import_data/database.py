@@ -56,12 +56,12 @@ class Paper:
         self.id = paper_data[0]
         self.year = paper_data[1]
         self.title = paper_data[2]
-        self.stored_title = paper_data[2]
         self.event_type = paper_data[3]
         self.pdf_name = paper_data[4]
         self.abstract = paper_data[5]
         self.paper_text = paper_data[6]
         self.authors = []
+        self.stored_title = paper_data[2]
 
 
 def _import_template(table, expression, where = ""):
@@ -143,3 +143,9 @@ def import_data():
         author.papers.append(paper.id)
 
     has_imported = True
+
+
+# Make sure that the id to paper pointers are correct after importing existing data.
+def recalculate_paper_pointers():
+    global paper_id_to_paper
+    paper_id_to_paper = {paper.id: paper for paper in papers}

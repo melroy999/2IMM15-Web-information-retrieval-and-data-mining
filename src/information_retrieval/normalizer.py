@@ -1,25 +1,77 @@
-# A table that will contain punctuation to be removed.
-import string
+import json
+import pickle
 
-import unicodedata
+import time
+from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import *
 
-punctuation_removal_table = str.maketrans({key: None for key in string.punctuation})
+# Different lemmatizers we can use.
+nltk_wordnet_lemmatizer = WordNetLemmatizer().lemmatize
 
-# A transition table to remove digits.
-remove_digits = str.maketrans('', '', string.digits)
+# Different stemmings we can use.
+nltk_porter_stemmer = PorterStemmer().stem
+nltk_lancaster_stemmer = LancasterStemmer().stem
+nltk_snowball_stemmer = SnowballStemmer("english").stem
+
+# A mapping from readable normalizer name to normalizer object.
+name_to_normalizer = {
+    "Nltk wordnet lemmatizer": nltk_wordnet_lemmatizer,
+    "Nltk porter stemmer": nltk_porter_stemmer,
+    "Nltk lancaster stemmer": nltk_lancaster_stemmer,
+    "Nltk snowball stemmer": nltk_snowball_stemmer,
+    "None": None
+}
+
+
+# A dict that just returns the key that was requested.
+class ReturnToSenderDict(dict):
+    def __missing__(self, key):
+        return key
 
 
 class Normalizer:
-    # Remove punctuation in the given text.
-    @staticmethod
-    def remove_punctuation(text):
-        # Remove all punctuation.
-        return text.translate(punctuation_removal_table)
+    def __init__(self, normalizer_name, use_stopwords):
+        self.use_stopwords = use_stopwords
+        self.operator = name_to_normalizer[normalizer_name]
+        self.normalizer_name = normalizer_name.lower().replace(" ", "_")
 
-    # Remove control characters from the text.
-    @staticmethod
-    def remove_control_characters(text):
-        return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
+        # We want to keep track of a list of normalizations that have already been executed.
+        self.export_file = False
+        if self.operator is None:
+            self.term_to_normalized_term = ReturnToSenderDict()
+        else:
+            try:
+                self.term_to_normalized_term = self.load_table_file()
+            except FileNotFoundError:
+                self.term_to_normalized_term = {}
+                self.export_file = True
+
+    # Dump the term to normalized term table for later use.
+    def create_table_file(self):
+        if self.export_file:
+            with open("../../data/normalization_" + self.normalizer_name + ".json", "w") as output_file:
+                json.dump(self.term_to_normalized_term, output_file)
+
+    # Load the term to normalized term table from disk.
+    def load_table_file(self):
+        with open("../../data/normalization_" + self.normalizer_name + ".json", "r") as input_file:
+            return json.load(input_file)
+
+    # Stem the words, using the lambda expression as the stemmer / lemmatizer. Also eliminate stopwords.
+    def normalize(self, term):
+        try:
+            return self.term_to_normalized_term[term]
+        except KeyError:
+            v = self.term_to_normalized_term[term] = self.operator(term)
+            return v
+
+    # Check if a term is a valid term. I.e, should we observe it or not.
+    def is_valid_term(self, term):
+        # All terms are valid, unless we use stopwords. In that case the stopwords are invalid.
+        if not self.use_stopwords:
+            return True
+        else:
+            return not english_stopwords.__contains__(term)
 
 
 # A list of english stop words.

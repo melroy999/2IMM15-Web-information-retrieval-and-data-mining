@@ -1,3 +1,4 @@
+import json
 import string
 import unicodedata
 import time
@@ -42,8 +43,19 @@ homoglyphs = {
 # List of vowels.
 vowels = "aeiouy"
 
+# Cleanup, if it exists.
+_cleanup = None
 
-class Cleanup:
+
+# We only want one instance...
+def get_cleanup_instance(database):
+    global _cleanup
+    if _cleanup is None:
+        _cleanup = _Cleanup(database)
+    return _cleanup
+
+
+class _Cleanup:
     def __init__(self, database):
         # Make sure that the database has imported the data.
         database.import_data()
@@ -81,12 +93,12 @@ class Cleanup:
 
         for i, token in enumerate(tokens):
             if i > 0:
-                prev_token = tokens[i-1]
+                prev_token = tokens[i - 1]
             else:
                 prev_token = None
 
             try:
-                next_token = tokens[i+1]
+                next_token = tokens[i + 1]
             except IndexError:
                 next_token = None
 
@@ -101,6 +113,13 @@ class Cleanup:
     def validate_word_existence(self, prev_token, token, next_token, sp):
         # First get the lower case version, as we want everything in lower case eventually.
         lower_case_token = token.lower()
+
+        # If the token is just one letter, we want to remove it, unless it is 'i' or 'a', which should pass immediately.
+        if len(lower_case_token) == 1:
+            if "ai".__contains__(lower_case_token):
+                return lower_case_token
+            else:
+                return None
 
         # If the word is in the world list, we can be sure that it is valid.
         if self.word_list.__contains__(lower_case_token):
@@ -256,7 +275,12 @@ class Cleanup:
     def clean(self, papers):
         # First, check if we have a pickle dump already for this.
         try:
-            return self.load_pickle_dump("papers_with_cleanup")
+            # Save the papers.
+            papers = self.load_pickle_dump("papers_with_cleanup")
+
+            # Warning, the papers in the database will not have been changed! So re-calculate the pointers.
+            db.papers = papers
+            db.recalculate_paper_pointers()
         except FileNotFoundError:
             # Print a warning that they should download the file, instead of waiting here for completion.
             print("Warning: cleanup can take up to 20 minutes. Please download the 'papers_with_cleanup.pickle' file "
@@ -274,11 +298,11 @@ class Cleanup:
                     field_value = paper.__getattribute__(field)
 
                     # We will replace control characters first, as it does not require tokenization to work.
-                    field_value = Cleanup.remove_control_characters(field_value)
+                    field_value = _Cleanup.remove_control_characters(field_value)
 
                     # Now make sure that the punctuation is in a state such that split works well.
                     # I.e. replaced by spaces.
-                    field_value = Cleanup.remove_punctuation(field_value)
+                    field_value = _Cleanup.remove_punctuation(field_value)
 
                     # Now we want to remove potential noise from the value, which should reduce the amount of terms.
                     field_value = self.remove_potential_noise(field_value, sp)
@@ -288,13 +312,13 @@ class Cleanup:
 
             # Store the data we just found in a pickle file for faster access.
             self.create_pickle_dump("papers_with_cleanup", papers)
-            return papers
+        return papers
 
     # Store the cleanup we found in a file, so that we can fetch it faster next time.
     @staticmethod
     def create_pickle_dump(filename, data):
         with open("../../data/" + filename + ".pickle", "wb") as output_file:
-            pickle.dump(data, output_file, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(data, output_file)
 
     @staticmethod
     def load_pickle_dump(filename):
@@ -304,8 +328,13 @@ class Cleanup:
 
 if __name__ == "__main__":
     start = time.time()
-    cleanup = Cleanup(db)
-    papers = cleanup.clean(db.papers)
+    _cleanup = _Cleanup(db)
+    papers = _cleanup.clean(db.papers)
+    for paper in papers[:10]:
+        print(paper.paper_text)
+    print()
+    for paper in db.papers[:10]:
+        print(paper.paper_text)
 
-    print(cleanup.scratch_list)
+    print(_cleanup.scratch_list)
     print(time.time() - start)
