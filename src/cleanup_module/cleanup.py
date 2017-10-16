@@ -48,7 +48,7 @@ _cleanup = None
 
 
 # We only want one instance...
-def get_cleanup_instance(database):
+def get_cleanup_instance(database=None):
     global _cleanup
     if _cleanup is None:
         _cleanup = _Cleanup(database)

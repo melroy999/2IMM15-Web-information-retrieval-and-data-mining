@@ -14,6 +14,9 @@ paper_fields = ["title", "abstract", "paper_text"]
 
 
 class Indexer(object):
+    # The status bar reference.
+    status_bar = None
+
     # Holds the results of the indexing.
     results = None
 
@@ -21,11 +24,19 @@ class Indexer(object):
     normalizer = None
 
     # Initializes the indexer.
-    def __init__(self):
+    def __init__(self, status_bar=None):
         # Load the papers and authors using the cleanup module, as we don't want all the gibberish.
         cleanup.get_cleanup_instance(database).clean(database.papers)
         self.lookup_wf_calc = {}
         self.lookup_idf_calc = {}
+        self.status_bar = status_bar
+
+    # Update the status in the gui, if possible.
+    def update_status(self, status):
+        try:
+            self.status_bar(status)
+        except TypeError:
+            pass
 
     # Reset the results of the indexer.
     def reset(self):
@@ -67,7 +78,8 @@ class Indexer(object):
 
         # Calculate the term frequencies.
         text_data["tf"] = self.calc_tf(terms)
-        text_data["wf"] = {term: self.calc_wf(value) for term, value in text_data["tf"].items()}
+        # noinspection PyArgumentList
+        text_data["wf"] = defaultdict(int, {term: self.calc_wf(value) for term, value in text_data["tf"].items()})
 
         # Add other useful information.
         text_data["number_of_unique_terms"] = len(text_data["tf"])
@@ -76,11 +88,25 @@ class Indexer(object):
         # For now, return the term frequency.
         return text_data
 
+    # Index the query.
+    def index_query(self, text, field):
+        # Here we do need to normalize the text first...
+        cleanup_instance = cleanup.get_cleanup_instance()
+        altered_text = cleanup_instance.remove_control_characters(text.lower())
+        altered_text = cleanup_instance.remove_punctuation(altered_text)
+
+        # Now we can index it, and update it straight afterwards with the idf data.
+        text_data = self.index_text(altered_text)
+        self.update_text_result(text_data, self.results["collection"][field]["idf"])
+        return text_data
+
     # Update the paper result to also contain tf.idf and wf.idf plus other useful information.
     def update_text_result(self, text_data, idf):
         # Calculate tf.idf and wf.idf.
-        text_data["tf.idf"] = {term: value * idf[term] for term, value in text_data["tf"].items()}
-        text_data["wf.idf"] = {term: value * idf[term] for term, value in text_data["wf"].items()}
+        # noinspection PyArgumentList
+        text_data["tf.idf"] = defaultdict(int, {term: value * idf[term] for term, value in text_data["tf"].items()})
+        # noinspection PyArgumentList
+        text_data["wf.idf"] = defaultdict(int, {term: value * idf[term] for term, value in text_data["wf"].items()})
 
         # Also calculate all the lengths.,
         text_data["vector_lengths"] = {
@@ -109,6 +135,9 @@ class Indexer(object):
 
     # Index the entirety of the corpus.
     def index_corpus(self, normalizer_name="None", use_stopwords=True):
+        # Start a timer for performance measures.
+        start = time.time()
+
         # First set the normalizer.
         self.normalizer = Normalizer(normalizer_name, use_stopwords)
 
@@ -122,6 +151,7 @@ class Indexer(object):
         # We want to index all the papers, which are many fields.
         # Since we don't want to switch our focus all the time, it might be best to loop over the fields first.
         for field in paper_fields:
+
             # The results found in this field of the paper.
             paper_field_results = {}
 
@@ -129,6 +159,7 @@ class Indexer(object):
             # In the meantime, we keep track of the df and df counters.
             cf = defaultdict(int)
             df = defaultdict(int)
+            self.update_status("Indexing field \"" + field + "\"... calculating paper frequencies...")
             for paper in database.papers:
                 # Index the given field, and store the information in the corresponding field.
                 paper_field_results[paper.id] = self.index_field(paper, field)
@@ -139,6 +170,7 @@ class Indexer(object):
                     df[term] += 1
 
             # Now change df to idf.
+            self.update_status("Indexing field \"" + field + "\"... calculating idf...")
             idf = defaultdict(int)
             for term, value in df.items():
                 idf[term] = self.calc_idf(value)
@@ -161,11 +193,21 @@ class Indexer(object):
             }
 
             # Update the paper measures.
+            self.update_status("Indexing field \"" + field + "\"... calculating tf.idf and wf.idf measures...")
             for paper_id, value in paper_field_results.items():
                 self.update_text_result(value, idf)
 
+            # Report on the amount of terms found for the field.
+            number_of_unique_terms = self.results["collection"][field]["number_of_unique_terms"]
+            print("Found", number_of_unique_terms, "unique terms for the field \"" + field + "\".")
+
         # Store the normalizer table file for later use.
         self.normalizer.create_table_file()
+
+        # Report on how long the indexing took.
+        print()
+        print("Finished indexing in", time.time() - start, "seconds.")
+        print()
 
 
 import math
@@ -174,7 +216,7 @@ if __name__ == "__main__":
 
     indexer = Indexer()
 
-    for i in range(0, 10):
+    for i in range(0, 1):
         indexer.reset()
         start = time.time()
         indexer.index_corpus("Nltk porter stemmer")
@@ -183,8 +225,16 @@ if __name__ == "__main__":
     # Make sure that the values are correct...
     f = indexer.results
     print(len(f["papers"]["paper_text"][1]["tf"]))
+    print(len(f["papers"]["paper_text"][1]["wf"]))
     print(len(f["papers"]["paper_text"][1]["tf.idf"]))
+    print(len(f["papers"]["paper_text"][1]["wf.idf"]))
+    print(f["papers"]["paper_text"][1]["tf"]["neural"])
+    print(f["papers"]["paper_text"][1]["wf"]["neural"])
+    print(f["papers"]["paper_text"][1]["tf.idf"]["neural"])
+    print(f["papers"]["paper_text"][1]["wf.idf"]["neural"])
     print(f["papers"]["paper_text"][1]["vector_lengths"])
+    print(len(f["collection"]["paper_text"]["idf"]))
+    print(f["collection"]["paper_text"]["idf"]["neural"])
 
     # f = indexer.results
     #
