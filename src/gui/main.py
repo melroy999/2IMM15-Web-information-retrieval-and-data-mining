@@ -66,7 +66,7 @@ def start_indexing():
 
     # Initialize the indexer.
     def runner():
-        indexer.full_index(stemming_mode, use_stopwords, update_status)
+        indexer.index_corpus(stemming_mode, use_stopwords)
         finish_indexing()
 
     t = threading.Thread(target=runner)
@@ -173,7 +173,7 @@ def print_boolean_results(query, results, top_x=10):
 
     for i in range(0, min(len(results), top_x)):
         paper = results[i]
-        print(paper.id, "\t", paper.title)
+        print(paper.id, "\t", paper.stored_title)
 
 
 # Finish analyzing and report the results.
@@ -306,7 +306,7 @@ def print_vector_space_results(query, scores, top_x=10):
 
     for i in range(0, min(len(scores), top_x)):
         paper_id, score = scores[i]
-        print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.paper_id_to_paper[paper_id].title)
+        print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", database.paper_id_to_paper[paper_id].stored_title)
 
 
 # Finish analyzing and report the results.
@@ -397,7 +397,7 @@ if __name__ == '__main__':
     gui = IndexingInterface(root)
 
     # Create the objects we will need.
-    indexer = Indexer()
+    indexer = Indexer(update_status)
     analyzer = None
 
     # Start the main GUI loop.

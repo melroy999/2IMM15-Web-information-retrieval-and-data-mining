@@ -21,6 +21,9 @@ author_ids = set()
 # A mapping from author id to author.
 author_id_to_author = {}
 
+# A flag so that we don't import twice and override our cleaned data.
+has_imported = False
+
 
 class Author:
     """
@@ -58,6 +61,7 @@ class Paper:
         self.abstract = paper_data[5]
         self.paper_text = paper_data[6]
         self.authors = []
+        self.stored_title = paper_data[2]
 
 
 def _import_template(table, expression, where = ""):
@@ -117,6 +121,11 @@ def _import_papers():
 
 
 def import_data():
+    global has_imported
+    if has_imported:
+        print("Already imported the database!")
+        return
+
     # First import the papers and authors.
     _import_authors()
     _import_papers()
@@ -132,3 +141,11 @@ def import_data():
 
         paper.authors.append(author.id)
         author.papers.append(paper.id)
+
+    has_imported = True
+
+
+# Make sure that the id to paper pointers are correct after importing existing data.
+def recalculate_paper_pointers():
+    global paper_id_to_paper
+    paper_id_to_paper = {paper.id: paper for paper in papers}

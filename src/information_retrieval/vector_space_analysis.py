@@ -1,13 +1,8 @@
-# field: paper_tfs, idf_collection, idf_collection_length
-
-# The scoring measures the user can choose from.
-from collections import defaultdict
-
 import math
-
 from import_data import database
 
-scoring_measures = ["tf", "wf", "tf_idf", "wf_idf"]
+# The scoring measures the user can choose from.
+scoring_measures = ["tf", "wf", "tf.idf", "wf.idf"]
 
 
 def cosine_similarity(target_frequencies, target_vector_length, candidate_frequencies,
@@ -60,14 +55,11 @@ class EmptyQueryException(Exception):
 
 def query_papers_search(query, indexer, field, scoring_measure):
     # First normalize and tokenize the query.
-    query_frequency_data = indexer.index_query(query)
+    query_frequency_data = indexer.index_query(query, field)
 
     # The query can end up empty because of tokenization. So throw an exception of this is the case.
     if len(query_frequency_data["tf"]) == 0:
         raise EmptyQueryException()
-
-    # We first have to calculate the tf.idf and wf.idf components.
-    indexer.calc_tf_idf_and_wf_idf(indexer.results["collection"][field]["idf"], query_frequency_data)
 
     # Get the tf or wf value, depending on the comparison mode.
     query_frequencies = query_frequency_data[scoring_measure]
@@ -104,7 +96,7 @@ def similar_papers_search(query, indexer, field, scoring_measure):
 
     # Report which paper we have found.
     paper = database.paper_id_to_paper[paper_id]
-    print("Target paper: #" + str(paper.id) + " \"" + paper.title + "\"")
+    print("Target paper: #" + str(paper.id) + " \"" + paper.stored_title + "\"")
 
     # Iterate over all papers, and gather the scores.
     scores = {}

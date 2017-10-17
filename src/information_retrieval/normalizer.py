@@ -1,109 +1,78 @@
+import json
 import pickle
-import string
 
-import unicodedata
+import time
 from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import *
 
 # Different lemmatizers we can use.
 nltk_wordnet_lemmatizer = WordNetLemmatizer().lemmatize
-
-from nltk.stem import *
 
 # Different stemmings we can use.
 nltk_porter_stemmer = PorterStemmer().stem
 nltk_lancaster_stemmer = LancasterStemmer().stem
 nltk_snowball_stemmer = SnowballStemmer("english").stem
 
-# A table that will contain punctuation to be removed.
-punctuation_removal_table = str.maketrans({key: None for key in string.punctuation})
-
-# A transition table to remove digits.
-remove_digits = str.maketrans('', '', string.digits)
-
-
-# A stemmer that just returns the original term.
-def no_stemming(term):
-    return term
-
+# A mapping from readable normalizer name to normalizer object.
 name_to_normalizer = {
     "Nltk wordnet lemmatizer": nltk_wordnet_lemmatizer,
     "Nltk porter stemmer": nltk_porter_stemmer,
     "Nltk lancaster stemmer": nltk_lancaster_stemmer,
     "Nltk snowball stemmer": nltk_snowball_stemmer,
-    "None": no_stemming
+    "None": None
 }
 
 
 # A dict that just returns the key that was requested.
-class CaptainObviousDict(dict):
+class ReturnToSenderDict(dict):
     def __missing__(self, key):
         return key
 
 
 class Normalizer:
-    def __init__(self, use_stopwords, operator_name=list(name_to_normalizer.keys())[0]):
+    def __init__(self, normalizer_name, use_stopwords):
         self.use_stopwords = use_stopwords
-        self.operator_name = operator_name
-        self.operator = name_to_normalizer[operator_name]
+        self.operator = name_to_normalizer[normalizer_name]
+        self.normalizer_name = normalizer_name.lower().replace(" ", "_")
 
-        # A dictionary that will hold already stemmed words.
-        try:
-            self.term_to_normalized_term = self.load_table_file()
-            print("Successfully loaded previously saved \"" + operator_name + "\" mapping table.")
-            print()
-            self.skip_file_write = True
-        except FileNotFoundError:
-            self.term_to_normalized_term = {}
-            self.skip_file_write = self.operator_name == "None"
+        # We want to keep track of a list of normalizations that have already been executed.
+        self.export_file = False
+        if self.operator is None:
+            self.term_to_normalized_term = ReturnToSenderDict()
+        else:
+            try:
+                self.term_to_normalized_term = self.load_table_file()
+            except FileNotFoundError:
+                self.term_to_normalized_term = {}
+                self.export_file = True
 
-    # Stem the words, using the lambda expression as the stemmer / lemmatizer.
+    # Dump the term to normalized term table for later use.
+    def create_table_file(self):
+        if self.export_file:
+            with open("../../data/normalization_" + self.normalizer_name + ".json", "w") as output_file:
+                json.dump(self.term_to_normalized_term, output_file)
+
+    # Load the term to normalized term table from disk.
+    def load_table_file(self):
+        with open("../../data/normalization_" + self.normalizer_name + ".json", "r") as input_file:
+            return json.load(input_file)
+
+    # Stem the words, using the lambda expression as the stemmer / lemmatizer. Also eliminate stopwords.
     def normalize(self, term):
         try:
             return self.term_to_normalized_term[term]
         except KeyError:
-            # We have certain terms that start with digits and end with a string.
-            # This is unusual for normal terms, so we remove all digits at the start and leave only the term.
-            if not term.isdigit() and term[0].isdigit():
-                term = term.translate(remove_digits)
+            v = self.term_to_normalized_term[term] = self.operator(term)
+            return v
 
-            self.term_to_normalized_term[term] = self.operator(term)
-            return self.term_to_normalized_term[term]
-
-    # Dump the term to normalized term table for later use.
-    def create_table_file(self):
-        if not self.skip_file_write:
-            with open("../../data/" + self.operator_name + ".pickle", "wb") as output_file:
-                pickle.dump(self.term_to_normalized_term, output_file)
-
-    # Load the term to normalized term table from disk.
-    def load_table_file(self):
-        with open("../../data/" + self.operator_name + ".pickle", "rb") as input_file:
-            return pickle.load(input_file)
-
-    # Remove punctuation in the given text.
-    @staticmethod
-    def remove_punctuation(text):
-        # Remove all punctuation.
-        return text.translate(punctuation_removal_table)
-
-    # Check whether the term is a stop word.
+    # Check if a term is a valid term. I.e, should we observe it or not.
     def is_valid_term(self, term):
-        # Numbers that start with 0 are not useful.
-        if term.isdigit() and term.startswith("0"):
-            return False
+        # All terms are valid, unless we use stopwords. In that case the stopwords are invalid.
+        if not self.use_stopwords:
+            return True
+        else:
+            return term not in english_stopwords
 
-        # Terms that are mostly numbers combined with little text is not useful either.
-        # term_length = len(term)
-        # numberless_term_length = len(term.translate(remove_digits))
-        # if term_length > 3 and term_length - numberless_term_length > 4:
-        #     return False
-
-        return not self.use_stopwords or not english_stopwords.__contains__(term)
-
-    # Remove control characters from the text.
-    @staticmethod
-    def remove_control_characters(text):
-        return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
 
 # A list of english stop words.
 english_stopwords = {'a', 'able', 'about', 'across', 'after', 'all', 'almost', 'also', 'am', 'among', 'an', 'and',
