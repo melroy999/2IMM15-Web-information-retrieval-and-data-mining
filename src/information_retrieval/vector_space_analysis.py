@@ -18,6 +18,10 @@ def cosine_similarity(target_frequencies, target_vector_length, candidate_freque
     for term in iteration_collection:
         dot_product += target_frequencies[term] * candidate_frequencies[term]
 
+    # If the dot product is 0, we should just return 0.
+    if dot_product == 0:
+        return 0
+
     # Normalize the result by using the length of the document vectors.
     normalization_factor = target_vector_length * candidate_vector_length
 
