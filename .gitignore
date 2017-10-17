@@ -99,3 +99,12 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# IDE
+.idea/
+
+# databases
+*.db
+
+# log file
+log.txt
