@@ -27,8 +27,8 @@ def document_probability_length_weight(d_l, c_l):
 
 # The different modes we have for calculating P(d).
 document_probability_modes = {
-    "None": document_probability_equal_weight,
-    "Document length": document_probability_length_weight
+    "Equal probability": document_probability_equal_weight,
+    "Document length based": document_probability_length_weight
 }
 
 # The available search models.
@@ -159,7 +159,7 @@ class ProbabilisticAnalysis:
     # Do the search for the given query, using the unigram language model.
     def search(self, query, indexer, field,
                search_mode_name=search_modes[0],
-               document_probability_mode_name="None",
+               document_probability_mode_name="Equal Probability",
                okapi_idf_mode_name=okapi_idf_modes[1],
                remove_duplicates=True,
                _lambda=0.0,
@@ -205,15 +205,39 @@ class ProbabilisticAnalysis:
 
         # Let the appropriate option calculate the probability.
         if search_mode_name == "Mixture model":
+            print("Executing \"mixed probability model\" with the following parameters:")
+            print("- Target field:", field)
+            print("- Remove duplicate terms in query:", remove_duplicates)
+            print("- Document probability mode:", document_probability_mode_name)
+            print(u"- \u03BB:", _lambda)
+            print()
             return self.search_mixture_model(query_tokens, indexer, field, document_probability_mode_name)
         elif search_mode_name == "Okapi BM25":
+            self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
             return self.search_okapi_bm25(query_tokens, indexer, field, k_1, b)
         elif search_mode_name == "Okapi BM25+":
+            self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
             # Here we need to set delta to the user defined value.
             self.delta = delta
             return self.search_okapi_bm25(query_tokens, indexer, field, k_1, b)
         else:
             print("Search mode unknown.")
+
+    def print_okapi_mode_parameters(self, search_mode_name, okapi_idf_mode_name, remove_duplicates, field):
+        print("Executing \"" + search_mode_name + "\" with the following parameters:")
+        print("- Target field:", field)
+        print("- Remove duplicate terms in query:", remove_duplicates)
+        print(u"- k\u2081:", self.k_1)
+        print(u"- b:", self.b)
+        if search_mode_name == "Okapi BM25+":
+            print(u"- \u03B4:", self.delta)
+        if okapi_idf_mode_name == "Summand 0 flooring":
+            print("- Summand mode: 0 flooring")
+        else:
+            print("- IDF mode:", okapi_idf_mode_name)
+            if okapi_idf_mode_name == "Okapi floored IDF":
+                print(u"- \u03B5:", self.epsilon)
+        print()
 
 
 if __name__ == "__main__":
