@@ -3,6 +3,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
+import time
+
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
 from gui.util import create_tool_tip
@@ -32,7 +34,7 @@ class IndexFrame(Frame):
         self.stemming_field = ttk.Combobox(self, values=stemming_choices, textvariable=self.stemming_var,
                                            state="readonly")
 
-        self.stemming_field.config(width=25)
+        self.stemming_field.config(width=22)
         self.stemming_label.grid(row=0, column=0, sticky=W)
         self.stemming_field.grid(row=0, column=1, sticky=W, padx=10)
 
@@ -97,25 +99,23 @@ class BooleanQueryFrame(Frame):
         self.query_button.grid(row=0, column=6, sticky=E)
 
         # Advanced options for the querying.
-        self.target_field_var = StringVar(self)
-        target_field_choices = [field for field in paper_fields]
-        self.target_field_var.set(target_field_choices[-1])
-        self.target_field_label = ttk.Label(self, text="Default target field: ")
-        self.target_field_field = ttk.Combobox(self, values=target_field_choices, textvariable=self.target_field_var,
-                                               state="readonly")
+        self.options_frame = Frame(self)
+        self.options_frame.grid_columnconfigure(5, weight=1)
+        self.options_frame.grid(row=1, column=1, columnspan=5, sticky=W + E, pady=(3, 0))
 
-        self.target_field_field.config(width=25)
-        self.target_field_label.grid(row=1, column=0, sticky=W)
-        self.target_field_field.grid(row=1, column=1, sticky=W, padx=10)
+        self.target_field = CompoundComboBox(self.options_frame, [field for field in paper_fields],
+                                             "Default target field: ", -1)
+        self.target_field.grid(row=1, column=1, sticky=W, padx=(10, 0))
 
         self.result_count_var = IntVar(self)
         result_count_choices = [results for results in results_to_show]
         self.result_count_var.set(result_count_choices[0])
-        self.result_count_label = ttk.Label(self, text="#Results: ")
-        self.result_count_field = ttk.Combobox(self, values=result_count_choices, textvariable=self.result_count_var,
+        self.result_count_label = ttk.Label(self.options_frame, text="#Results: ")
+        self.result_count_field = ttk.Combobox(self.options_frame, values=result_count_choices,
+                                               textvariable=self.result_count_var,
                                                state="readonly")
 
-        self.result_count_field.config(width=25)
+        self.result_count_field.config(width=22)
         self.result_count_label.grid(row=1, column=2, sticky=W)
         self.result_count_field.grid(row=1, column=3, sticky=W, padx=10)
 
@@ -132,7 +132,7 @@ class BooleanQueryFrame(Frame):
         disable_search_buttons()
 
         # Get the query mode and whether we are searching for a document or not.
-        target_default_field = self.target_field_var.get()
+        target_default_field = self.target_field.get()
         result_count = self.result_count_var.get()
 
         # Change the status.
@@ -201,42 +201,39 @@ class VectorSpaceQueryFrame(Frame):
         self.query_button.grid(row=0, column=6, sticky=E)
 
         # Advanced options for the querying.
-        self.search_method_var = StringVar(self)
-        search_method_choices = [scoring_mode for scoring_mode in vsa.scoring_measures]
-        self.search_method_var.set(search_method_choices[0])
-        self.search_method_label = ttk.Label(self, text="Search method: ")
-        self.search_method_field = ttk.Combobox(self, values=search_method_choices, textvariable=self.search_method_var,
-                                                state="readonly")
+        self.options_frame = Frame(self)
+        self.options_frame.grid_columnconfigure(5, weight=1)
+        self.options_frame.grid(row=1, column=1, columnspan=5, sticky=W + E, pady=(3, 0))
 
-        self.search_method_field.config(width=25)
-        self.search_method_label.grid(row=1, column=0)
-        self.search_method_field.grid(row=1, column=1, sticky=W, padx=10)
+        self.search_method = CompoundComboBox(self.options_frame,
+                                              [scoring_mode for scoring_mode in vsa.scoring_measures],
+                                              "Search measurement: ")
+        self.search_method.grid(row=1, column=1, sticky=W, padx=(10, 0))
 
-        self.target_field_var = StringVar(self)
-        target_field_choices = [field for field in paper_fields]
-        self.target_field_var.set(target_field_choices[-1])
-        self.target_field_label = ttk.Label(self, text="Paper field: ")
-        self.target_field_field = ttk.Combobox(self, values=target_field_choices, textvariable=self.target_field_var,
-                                               state="readonly")
+        self.similarity_measure = CompoundComboBox(self.options_frame,
+                                                   [measure for measure in vsa.similarity_measures],
+                                                   "Similarity measure: ", 2)
+        self.similarity_measure.grid(row=1, column=2, sticky=W)
 
-        self.target_field_field.config(width=25)
-        self.target_field_label.grid(row=1, column=2, sticky=W)
-        self.target_field_field.grid(row=1, column=3, sticky=W, padx=10)
+        self.target_field = CompoundComboBox(self.options_frame, [field for field in paper_fields],
+                                             "Paper field: ", -1)
+        self.target_field.grid(row=1, column=3, sticky=W)
 
         self.result_count_var = IntVar(self)
         result_count_choices = [results for results in results_to_show]
         self.result_count_var.set(result_count_choices[0])
-        self.result_count_label = ttk.Label(self, text="#Results: ")
-        self.result_count_field = ttk.Combobox(self, values=result_count_choices, textvariable=self.result_count_var,
+        self.result_count_label = ttk.Label(self.options_frame, text="#Results: ")
+        self.result_count_field = ttk.Combobox(self.options_frame, values=result_count_choices,
+                                               textvariable=self.result_count_var,
                                                state="readonly")
 
-        self.result_count_field.config(width=25)
+        self.result_count_field.config(width=22)
         self.result_count_label.grid(row=1, column=4, sticky=W)
         self.result_count_field.grid(row=1, column=5, sticky=W, padx=10)
 
-        self.find_comparable_papers = ttk.Checkbutton(self, text="Find similar papers")
+        self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers")
         self.find_comparable_papers.state(['!alternate'])
-        self.find_comparable_papers.grid(row=1, column=6, sticky=W)
+        self.find_comparable_papers.grid(row=1, column=5, sticky=E, padx=(0, 10))
         create_tool_tip(self.find_comparable_papers, "Enter the paper's title to find similar papers.")
 
     # Start analyzing the query and find results.
@@ -253,8 +250,9 @@ class VectorSpaceQueryFrame(Frame):
 
         # Get the query mode and whether we are searching for a document or not.
         find_similar_documents = self.find_comparable_papers.instate(['selected'])
-        query_score_mode = self.search_method_var.get()
-        target_field = self.target_field_var.get()
+        query_score_mode = self.search_method.get()
+        similarity_measure = self.similarity_measure.get()
+        target_field = self.target_field.get()
         result_count = self.result_count_var.get()
 
         # Change the status.
@@ -262,6 +260,7 @@ class VectorSpaceQueryFrame(Frame):
         print("=== VECTOR-SPACE ANALYZER ===")
         print("Starting vector space search with the following settings: ")
         print("- Scoring mode:", query_score_mode)
+        print("- Similarity measure:", similarity_measure)
         print("- Search for similar document:", find_similar_documents)
         print("- Target field:", target_field)
         print("- Number of results:", result_count)
@@ -272,7 +271,8 @@ class VectorSpaceQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
-                scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents)
+                scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents,
+                                    similarity_measure)
 
                 if scores is not None:
                     # Print the scores.
@@ -382,19 +382,27 @@ class ProbabilisticQueryFrame(Frame):
         self.query_button.grid(row=0, column=51, sticky=E)
 
         # Advanced options for the querying.
-        self.search_mode = CompoundComboBox(self, [results for results in search_modes], "Search mode: ")
+        self.options_frame = Frame(self)
+        self.options_frame.grid_columnconfigure(5, weight=1)
+        self.options_frame.grid(row=1, column=1, columnspan=50, sticky=W + E, pady=(3, 0))
+
+        self.search_mode = CompoundComboBox(self.options_frame, [results for results in search_modes],
+                                            "Search mode: ")
         self.search_mode.grid(row=1, column=1, sticky=W, padx=(10, 0))
 
-        self.probability_mode = CompoundComboBox(self, [results for results in document_probability_modes], "p(d): ")
+        self.probability_mode = CompoundComboBox(self.options_frame,
+                                                 [results for results in document_probability_modes], "p(d): ")
         self.probability_mode.grid(row=1, column=2, sticky=W)
 
-        self.idf_mode = CompoundComboBox(self, [results for results in okapi_idf_modes], "Okapi idf mode: ", 1)
+        self.idf_mode = CompoundComboBox(self.options_frame, [results for results in okapi_idf_modes],
+                                         "Okapi idf mode: ", 1)
         self.idf_mode.grid(row=1, column=3, sticky=W)
 
-        self.target_field = CompoundComboBox(self, [results for results in paper_fields], "Target field: ", 2)
+        self.target_field = CompoundComboBox(self.options_frame, [results for results in paper_fields],
+                                             "Target field: ", 2)
         self.target_field.grid(row=1, column=4, sticky=W)
 
-        self.remove_duplicate_terms = ttk.Checkbutton(self, text="Remove duplicate terms in query")
+        self.remove_duplicate_terms = ttk.Checkbutton(self.options_frame, text="Remove duplicate terms in query")
         self.remove_duplicate_terms.state(['!alternate'])
         self.remove_duplicate_terms.grid(row=1, column=5, sticky=W, padx=10)
 
@@ -425,7 +433,7 @@ class ProbabilisticQueryFrame(Frame):
         self.result_count_field = ttk.Combobox(self.slider_frame, values=result_count_choices,
                                                textvariable=self.result_count_var, state="readonly")
 
-        self.result_count_field.config(width=25)
+        self.result_count_field.config(width=22)
         self.result_count_label.grid(row=0, column=5, sticky=E)
         self.result_count_field.grid(row=0, column=6, sticky=E, padx=10)
 
