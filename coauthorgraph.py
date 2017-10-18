@@ -15,6 +15,7 @@ import matplotlib.patches as mpatches
 import matplotlib
 import seaborn as sns
 import atm
+import findPercMatch
 
 
 #df_a2doc=pickle.load(open("a2doc.p","rb"))
@@ -126,11 +127,32 @@ def plot_matrix_Plot(G):
     nv.MatrixPlot(G).draw()
     plt.show()
 
+
+def create_doc_citation_matrix(df_papers):
+    m=[]
+    for i in range(len(df_papers)):
+        p=[]
+        print(i)
+        for j in range(len(df_papers)):
+            print(j)
+            p.append(findPercMatch.returnPercentageMatch(df_papers['title'][i],df_papers['paper_text'][j]))
+        
+        p[i]=0
+        m.append(p)
+    pickle.dump(open("citationMatrix.p","wb"))
+    return m
+    
+            
+    
+    
+
 #model=atm.load_model()
 #G=create_Graph(df_papers,df_authors,model)
 #As=computeAuthorStrength(G)
-gd=get_top_authors(G,top_n=20)
+#gd=get_top_authors(G,top_n=20)
 #get_top_collabarators(As,df_authors['name'].values)
+m=create_doc_citation_matrix(df_papers)
+
 
     
     

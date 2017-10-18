@@ -388,6 +388,18 @@ def compute_top_topic_by_year_matrix_of_all_authors(lda_model,df_authors,df_map,
     return p
         
         
+
+def find_most_frequent_author(top_n=10):
+    a=np.array(pickle.load(open("Atop_topic_by_year.p","rb")))
+    f=[len(np.unique(a[i])) for i in range(len(a))]
+    top_idx=np.flip(np.argsort(f)[-top_n:],axis=0)
+    top_f=[f[i] for i in range(len(top_idx))]
+    top_name=[df_authors['name'][i] for i in range(len(top_idx))]
+    df=pd.DataFrame({'Author':top_name,'Frequency':top_f})
+    return df
+    
+    
+    
     
     
 if __name__=='__main__':
