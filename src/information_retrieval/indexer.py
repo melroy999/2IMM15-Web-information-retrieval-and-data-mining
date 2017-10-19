@@ -235,6 +235,15 @@ class Indexer(object):
             print("Found a file containing the desired index. Importing now.")
             return pickle.load(input_file)
 
+    # Get the normalized values for a specific measurement.
+    def get_normalized_paper_values(self, field, measurement):
+        normalized_values = {}
+        for paper_id, paper_data in self.results["papers"][field].items():
+            # Normalize.
+            vector_length = paper_data["vector_lengths"][measurement]
+            normalized_values[paper_id] = {term: v / vector_length for term, v in paper_data[measurement].items()}
+        return normalized_values
+
 
 if __name__ == "__main__":
 
@@ -259,6 +268,11 @@ if __name__ == "__main__":
     print(f["papers"]["paper_text"][1]["vector_lengths"])
     print(len(f["collection"]["paper_text"]["idf"]))
     print(f["collection"]["paper_text"]["idf"]["neural"])
+
+    for i in range(0, 10):
+        start = time.time()
+        indexer.get_normalized_paper_values("paper_text", "tf.idf")
+        print(time.time() - start)
 
     # f = indexer.results
     #
