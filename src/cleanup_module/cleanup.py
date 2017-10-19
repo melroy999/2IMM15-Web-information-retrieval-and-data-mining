@@ -81,6 +81,7 @@ class _Cleanup:
 
         # A scratch list for finding which elimination/selector defined whether the term is valid.
         self.scratch_list = defaultdict(int)
+        self.timing_list = defaultdict(float)
 
     # Remove terms in the text that are potentially noise.
     # This is the case for combinations of long numbers and long strings.
@@ -115,113 +116,187 @@ class _Cleanup:
         lower_case_token = token.lower()
 
         # If the token is just one letter, we want to remove it, unless it is 'i' or 'a', which should pass immediately.
+        _start = time.time()
         if len(lower_case_token) == 1:
             if "ai".__contains__(lower_case_token):
+                self.timing_list["single_character_approvals"] += time.time() - _start
+                self.scratch_list["single_character_approvals"] += 1
                 return lower_case_token
             else:
+                self.timing_list["single_character_eliminations"] += time.time() - _start
+                self.scratch_list["single_character_eliminations"] += 1
                 return None
+        self.timing_list["single_character_pass"] += time.time() - _start
+        self.scratch_list["single_character_pass"] += 1
 
         # If the word is in the world list, we can be sure that it is valid.
+        _start = time.time()
         if lower_case_token in self.word_list:
-            self.scratch_list["word_list"] += 1
+            self.timing_list["word_list_approvals"] += time.time() - _start
+            self.scratch_list["word_list_approvals"] += 1
             return lower_case_token
+        self.timing_list["word_list_pass"] += time.time() - _start
+        self.scratch_list["word_list_pass"] += 1
 
         # If the token is only digits it is probably a valid number.
+        _start = time.time()
         if token.isdigit():
             # However, very long numbers are useless to us, so a limit of size 6 seems appropriate.
             # Next to that, we will not encounter meaningful numbers starting with 0.
             if token[0] != "0" and len(token) <= 6:
-                self.scratch_list["is_digit"] += 1
+                self.timing_list["is_digit_approvals"] += time.time() - _start
+                self.scratch_list["is_digit_approvals"] += 1
                 return lower_case_token
             else:
-                self.scratch_list["is_invalid_digit_pruning"] += 1
+                self.timing_list["is_invalid_digit_eliminations"] += time.time() - _start
+                self.scratch_list["is_invalid_digit_eliminations"] += 1
                 return None
+        self.timing_list["is_digit_pass"] += time.time() - _start
+        self.scratch_list["is_digit_pass"] += 1
 
         # If the word is upper case in its entirety, it is probably an abbreviation.
+        _start = time.time()
         if token.isupper():
-            self.scratch_list["is_upper"] += 1
+            self.timing_list["is_upper_case_approvals"] += time.time() - _start
+            self.scratch_list["is_upper_case_approvals"] += 1
             return lower_case_token
+        self.timing_list["is_upper_case_pass"] += time.time() - _start
+        self.scratch_list["is_upper_case_pass"] += 1
 
         # If the word is upper cased followed by an "s", it is probably an abbreviation as well.
         # However, we do not want the [s] ending in there... or do we? We don't eliminate it during search...
         # With this reasoning we always have to do both cases. So remove the s.
+        _start = time.time()
         if token[:-1].isupper() and token[-1] == "s":
-            self.scratch_list["is_upper_plural"] += 1
+            self.timing_list["is_plural_upper_case_approvals"] += time.time() - _start
+            self.scratch_list["is_plural_upper_case_approvals"] += 1
             return lower_case_token[:-1]
+        self.timing_list["is_plural_upper_case_pass"] += time.time() - _start
+        self.scratch_list["is_plural_upper_case_pass"] += 1
 
         # If the word starts with a capital letter and is lower case on all the other letters, it is probably a name.
+        _start = time.time()
         if token.istitle():
-            self.scratch_list["is_title"] += 1
+            self.timing_list["is_title_cased_approvals"] += time.time() - _start
+            self.scratch_list["is_title_cased_approvals"] += 1
             return lower_case_token
+        self.timing_list["is_title_cased_pass"] += time.time() - _start
+        self.scratch_list["is_title_cased_pass"] += 1
 
         # Does the word start with Mc and then a camel case? Probably a name as well...
+        _start = time.time()
         if token.startswith("Mc") and token[2:].istitle():
-            self.scratch_list["is_mc_title"] += 1
+            self.timing_list["is_mc_title_cased_approvals"] += time.time() - _start
+            self.scratch_list["is_mc_title_cased_approvals"] += 1
             return lower_case_token
+        self.timing_list["is_mc_title_cased_pass"] += time.time() - _start
+        self.scratch_list["is_mc_title_cased_pass"] += 1
 
         # At this point, any combination of number and digit is probably useless.
+        _start = time.time()
         if any(c.isdigit() for c in lower_case_token):
-            self.scratch_list["is_digit_number_pruning"] += 1
+            self.timing_list["is_digit_number_combination_eliminations"] += time.time() - _start
+            self.scratch_list["is_digit_number_combination_eliminations"] += 1
             return None
+        self.timing_list["is_digit_number_combination_pass"] += time.time() - _start
+        self.scratch_list["is_digit_number_combination_pass"] += 1
 
         # Words ending on 'th' indicate a ranking, which probably is not useful.
+        _start = time.time()
         if lower_case_token.endswith("th"):
-            self.scratch_list["is_th_pruning"] += 1
+            self.timing_list["ends_with_th_eliminations"] += time.time() - _start
+            self.scratch_list["ends_with_th_eliminations"] += 1
             return None
+        self.timing_list["ends_with_th_pass"] += time.time() - _start
+        self.scratch_list["ends_with_th_pass"] += 1
 
         # Two term words are probably not useful.
         # Most four term words look like gibberish... naturally some would be useful, but most are useless.
+        _start = time.time()
         if len(lower_case_token) < 5:
-            self.scratch_list["is_too_short_pruning"] += 1
+            self.timing_list["term_too_short_eliminations"] += time.time() - _start
+            self.scratch_list["term_too_short_eliminations"] += 1
             return None
+        self.timing_list["term_too_short_pass"] += time.time() - _start
+        self.scratch_list["term_too_short_pass"] += 1
 
         # On the other hand, long words don't look like gibberish.
+        _start = time.time()
         if len(lower_case_token) > 12:
-            self.scratch_list["is_long_validity"] += 1
+            self.timing_list["long_term_approvals"] += time.time() - _start
+            self.scratch_list["long_term_approvals"] += 1
             return lower_case_token
+        self.timing_list["long_term_pass"] += time.time() - _start
+        self.scratch_list["long_term_pass"] += 1
 
         # Some papers seem to use a terrible version of english german. Try to replace all v with w.
+        _start = time.time()
         w_lower_case_token = lower_case_token.replace("v", "w")
         if w_lower_case_token in self.word_list:
-            self.scratch_list["is_bad_german_vord_altering"] += 1
+            self.timing_list["bad_german_vord_altering"] += time.time() - _start
+            self.scratch_list["bad_german_vord_altering"] += 1
             return w_lower_case_token
+        self.timing_list["bad_german_vord_pass"] += time.time() - _start
+        self.scratch_list["bad_german_vord_pass"] += 1
 
         # A lot of papers seem to have random spaces everywhere between certain words...
         # Recen tly, dissimilari ty, sampl es, su bstitu te, compu ters, etc
+        _start = time.time()
         if prev_token is not None and next_token is not None:
             if prev_token + lower_case_token + next_token in self.word_list:
-                self.scratch_list["superglue_both_sides"] += 1
+                self.timing_list["superglue_both_sides_altering"] += time.time() - _start
+                self.scratch_list["superglue_both_sides_altering"] += 1
                 return prev_token + lower_case_token + next_token
             if lower_case_token + next_token in self.word_list:
-                self.scratch_list["superglue_right_side"] += 1
+                self.timing_list["superglue_right_side_altering"] += time.time() - _start
+                self.scratch_list["superglue_right_side_altering"] += 1
                 return lower_case_token + next_token
             if prev_token + lower_case_token in self.word_list:
-                self.scratch_list["superglue_left_side"] += 1
+                self.timing_list["superglue_left_side_altering"] += time.time() - _start
+                self.scratch_list["superglue_left_side_altering"] += 1
                 return prev_token + lower_case_token
+        self.timing_list["superglue_pass"] += time.time() - _start
+        self.scratch_list["superglue_pass"] += 1
 
         # Some not found words seem to have homoglyph issues. Look at homoglyphs: f -> t, l -> 1, etc.
+        _start = time.time()
         for char, candidates in homoglyphs.items():
             for candidate in candidates:
                 candidate_word = lower_case_token.replace(char, candidate)
                 if candidate_word in self.word_list:
-                    self.scratch_list["homoglyphs"] += 1
+                    self.timing_list["homoglyph_alterations"] += time.time() - _start
+                    self.scratch_list["homoglyph_alterations"] += 1
                     return candidate_word
+        self.timing_list["homoglyph_pass"] += time.time() - _start
+        self.scratch_list["homoglyph_pass"] += 1
 
         # At this point, any word with mixed capitalization is probably useless.
+        _start = time.time()
         if any(char.isupper() for char in token):
-            self.scratch_list["capitalization_elimination_pruning"] += 1
+            self.timing_list["mixed_capitalization_elimination_eliminations"] += time.time() - _start
+            self.scratch_list["mixed_capitalization_elimination_eliminations"] += 1
             return None
+        self.timing_list["mixed_capitalization_elimination_pass"] += time.time() - _start
+        self.scratch_list["mixed_capitalization_elimination_pass"] += 1
 
         # Words without vowels are useless.
+        _start = time.time()
         if not any(char in vowels for char in token):
-            self.scratch_list["no_vowels_pruning"] += 1
+            self.timing_list["no_vowels_eliminations"] += time.time() - _start
+            self.scratch_list["no_vowels_eliminations"] += 1
             return None
+        self.timing_list["no_vowels_pass"] += time.time() - _start
+        self.scratch_list["no_vowels_pass"] += 1
 
         # Use a spelling corrector and see if the word exists afterwards.
+        _start = time.time()
         spelling_correction = sp.correction(lower_case_token)
         if spelling_correction in self.word_list:
-            self.scratch_list["spelling_correction"] += 1
+            self.timing_list["spelling_correction_alterations"] += time.time() - _start
+            self.scratch_list["spelling_correction_alterations"] += 1
             return spelling_correction
+        self.timing_list["spelling_correction_pass"] += time.time() - _start
+        self.scratch_list["spelling_correction_pass"] += 1
 
         # Other ideas:
         # Use hyphenation to see if the word is pronounceable.
@@ -330,11 +405,17 @@ if __name__ == "__main__":
     start = time.time()
     _cleanup = _Cleanup(db)
     papers = _cleanup.clean(db.papers)
-    for paper in papers[:10]:
-        print(paper.paper_text)
-    print()
-    for paper in db.papers[:10]:
-        print(paper.paper_text)
 
     print(_cleanup.scratch_list)
-    print(time.time() - start)
+    print(_cleanup.timing_list)
+    print()
+
+    for term in _cleanup.scratch_list:
+        # Print both the amount of occurrences, and the time.
+        print("rule:", term)
+        print("number of occurrences:", _cleanup.scratch_list[term])
+        print("total time:", _cleanup.timing_list[term])
+        print("time per operation:", _cleanup.timing_list[term] / _cleanup.scratch_list[term])
+        print()
+
+    print("Total running time:", time.time() - start)
