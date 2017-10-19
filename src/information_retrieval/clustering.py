@@ -4,6 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from import_data import database
 import cleanup_module.cleanup
+import numpy as np
 
 from sklearn.feature_extraction import DictVectorizer
 from information_retrieval.indexer import Indexer
@@ -26,9 +27,17 @@ X = vectorizer.fit_transform([result["tf.idf"] for result in indexer.results["pa
 # X = vectorizer.fit_transform(documents)
 # print(time.time() - start)
 
+from sklearn.metrics import silhouette_score
+
+# for n_cluster in range(40, 55):
+#     kmeans = KMeans(n_clusters=n_cluster, init='k-means++', max_iter=100, n_init=1).fit(X)
+#     label = kmeans.labels_
+#     sil_coeff = silhouette_score(X, label, metric='euclidean')
+#     print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_cluster, sil_coeff))
+
 # Cluster documents
 start = time.time()
-true_k = 6
+true_k = 50
 model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1)
 model.fit_transform(X)
 
@@ -41,6 +50,13 @@ for i in range(true_k):
     for ind in order_centroids[i, :10]:
         print (' %s' % terms[ind],)
     print ('\n')
+
+labels, counts = np.unique(model.labels_[model.labels_>=0], return_counts=True)
+print (counts[np.argsort(-counts)], labels[np.argsort(-counts)])
+
+for i in range(true_k):
+    print (labels[i], counts[i])
+
 print(time.time() - start)
 
 
