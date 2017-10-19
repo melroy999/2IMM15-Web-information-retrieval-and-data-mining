@@ -31,7 +31,6 @@ class LDA_TM:
         self.df_map.paper_id=self.df_map.paper_id.astype(str)
         self.df_map.author_id=self.df_map.author_id.astype(str)
         self.df_authors.id=self.df_authors.id.astype(str)
-        self.load_data()
         self.model_name=model_name+'.lda'
         self.doc_vecs_name=model_name+'_doc_vecs.p'
         self.tsne_name=model_name+'_tsne.p'
@@ -44,6 +43,10 @@ class LDA_TM:
         self.load_LDA_model(self.model_name)
         self.load_doc_vecs(self.doc_vecs_name)
         self.topic_labels=['Topic #'+str(i+1) for i in range(self.model.num_topics)]
+        self.load_Tsne_embedding()
+        self.year_dist=self.load_year_dist()
+        self.load_author_top_topic_by_year_matrix()
+        
         
         
         
@@ -69,9 +72,23 @@ class LDA_TM:
         print("Loading Completed")
         
     def load_LDA_model(self,name='nips.lda'):
+        print("\nLoading model from %s" %self.model_name)
         
         self.model=gensim.models.LdaModel.load(name)
+    
+    def load_Tsne_embedding(self,name='tnse_embedding.p'):
+        print("\nLoading Tsne embeddings from %s" %self.tsne_name)
+        self.tsne_embedding=pickle.load(open(self.tsne_name,"rb"))
+    
+    def load_year_dist(self):
+        print("\nLoading Year Distribution Matrix from %s" %self.year_dist_name)
+        return pickle.load(open(self.year_dist_name,"rb"))
+    
+    def load_author_top_topic_by_year_matrix(self):
+        print("\nLoading Author Top Topic of year Matrix from %s" %self.author_top_topic_by_year_name)
+        self.author_top_topic_by_year=np.array(pickle.load(open(self.author_top_topic_by_year_name,"rb")))
         
+    
         
     
     def create_LDA_model(self,num_topics,alpha='auto'):
@@ -127,6 +144,7 @@ class LDA_TM:
             plt.show()
             year_dist.append(df_dist)
         pickle.dump(year_dist,open(self.year_dist_name,"wb"))
+        self.year_dist=year_dist
         return year_dist
     
     def create_top_topic_by_year_matrix_of_all_authors(self):
@@ -271,8 +289,6 @@ class LDA_TM:
         
     
     def topic_evolution_by_year(self,topic):
-        #year_dist=pickle.load(open("year_dist.p","rb"))
-        self.year_dist=self.load_year_dist()
         year_dist=self.year_dist
         topic_score=[]
         for i in range(len(year_dist)):
@@ -283,8 +299,6 @@ class LDA_TM:
             
         return topic_score
     
-    def load_year_dist(self):
-        return pickle.load(open(self.year_dist_name,"rb"))
     
     
     def plot_all_topic_evolutions(self):
@@ -294,10 +308,12 @@ class LDA_TM:
             
     
     def get_author_docs(self,author_id):
+        'Returns the doucument Ids published by the author'
         return self.df_map['paper_id'][self.df_map['author_id']==author_id].values
     
     
     def get_author_topic_dist_for_year(self,a_id,year,verbose=True):
+        'Sum of topic distributions of documents published for the given year'
         model=self.model
         df_papers=self.df_papers
         docs=self.get_author_docs(a_id)
@@ -312,7 +328,7 @@ class LDA_TM:
         #return df,df.empty
             
     def plot_author_evolution_plot(self,a_id,plot=True):
-        model=self.model
+        'Plots and returns the topic distribution of the author by year'
         df_papers=self.df_papers
         years=[i for i in range(df_papers['year'].min(),df_papers['year'].max()+1)]
         df=pd.concat([pd.DataFrame({year:self.get_author_topic_dist_for_year(a_id,year,verbose=plot)}) for year in years],axis=1)
@@ -330,6 +346,9 @@ class LDA_TM:
         
         
     def plot_top_topic_of_author_by_year(self,df_author_eval,plot=True):
+        '''needs output from plot_author_evolution_plot(a_id) as input
+        Plots the top topic of the author for the given year'''
+        
         years=[y for y in range(1987,2017)]
         dc=df_author_eval.cumsum(axis=1)
         p=[dc[y].idxmax() for y in years]
@@ -344,8 +363,9 @@ class LDA_TM:
         return p
     
     
-    def find_most_frequent_author(self,top_n=10):
-        a=np.array(pickle.load(open(self.author_top_topic_by_year_name,"rb")))
+    def find_most_frequent_authors(self,top_n=10):
+        'Returns the dataFrame of authors who changed topics most times'
+        a=self.author_top_topic_by_year
         f=[len(np.unique(a[i])) for i in range(len(a))]
         top_idx=np.flip(np.argsort(f)[-top_n:],axis=0)
         top_f=[f[top_idx[i]] for i in range(len(top_idx))]
@@ -361,13 +381,13 @@ if __name__=='__main__':
     Tm=LDA_TM('nipsLDA')
     #Tm.create_LDA_model(10)
     Tm.load_existing_model()
-    Tm.plot_author_evolution_plot('13')
-    Tm.get_author_topic_dist_for_year('13',1993)
-    print(Tm.get_author_docs('13'))
-    Tm.plot_all_topic_evolutions()
-    Tm.print_top_topics_of_year(1993)
-    Tm.print_top_titles_by_topic()
-    df=Tm.find_most_frequent_author()
+    #Tm.plot_author_evolution_plot('13')
+    #Tm.get_author_topic_dist_for_year('13',1993)
+    #print(Tm.get_author_docs('13'))
+    #Tm.plot_all_topic_evolutions()
+    #Tm.print_top_topics_of_year(1993)
+    #Tm.print_top_titles_by_topic()
+    #df=Tm.find_most_frequent_authors()
 
     
     
