@@ -12,10 +12,11 @@ from information_retrieval.indexer import Indexer
 # Import the vectorization as done by the indexing.
 indexer = Indexer()
 indexer.index_corpus("Nltk porter stemmer", True)
+normalized = indexer.get_normalized_paper_values("paper_text", "wf.idf")
 
 # Use the results found in the indexing as the vector.
 vectorizer = DictVectorizer()
-X = vectorizer.fit_transform([result["tf.idf"] for result in indexer.results["papers"]["paper_text"].values()])
+X = vectorizer.fit_transform(normalized.values())
 
 # cleanup_module.cleanup.get_cleanup_instance(database).clean(database.papers)
 #
@@ -29,15 +30,15 @@ X = vectorizer.fit_transform([result["tf.idf"] for result in indexer.results["pa
 
 from sklearn.metrics import silhouette_score
 
-# for n_cluster in range(40, 55):
-#     kmeans = KMeans(n_clusters=n_cluster, init='k-means++', max_iter=100, n_init=1).fit(X)
-#     label = kmeans.labels_
-#     sil_coeff = silhouette_score(X, label, metric='euclidean')
-#     print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_cluster, sil_coeff))
+for n_cluster in range(2, 50):
+    kmeans = KMeans(n_clusters=n_cluster, init='k-means++', max_iter=100, n_init=1).fit(X)
+    label = kmeans.labels_
+    sil_coeff = silhouette_score(X, label, metric='euclidean')
+    print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_cluster, sil_coeff))
 
 # Cluster documents
 start = time.time()
-true_k = 50
+true_k = 2
 model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1)
 model.fit_transform(X)
 
