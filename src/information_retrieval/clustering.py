@@ -63,18 +63,25 @@ def clutersgraph(X, model):
 #     sil_coeff = silhouette_score(X, label, metric='euclidean')
 #     print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_cluster, sil_coeff))
 
-clusters = 4
-seeds = 2
+# clusters = 2
+# seeds = 1
+#
+# terms, order_centroids, labels, counts, X, model = clusterKMeans("Nltk porter stemmer", "tf.idf", clusters, seeds)
+#
+# for i in range(clusters):
+#     print("Cluster %d:" % i, '\n')
+#     for ind in order_centroids[i, :10]:
+#         print(' %s' % terms[ind], )
+#     print('\n')
+#
+# for i in range(clusters):
+#     print (labels[i], counts[i])
+#
+# clutersgraph(X, model)
 
-terms, order_centroids, labels, counts, X, model = clusterKMeans("Nltk porter stemmer", "tf.idf", clusters, seeds)
+# The scoring measures the user can choose from.
+scoring_measures = ["tf.idf", "wf.idf"]
 
-for i in range(clusters):
-    print("Cluster %d:" % i, '\n')
-    for ind in order_centroids[i, :10]:
-        print(' %s' % terms[ind], )
-    print('\n')
-
-for i in range(clusters):
-    print (labels[i], counts[i])
-
-clutersgraph(X, model)
+# Choices for stemmer
+stemmer = ["Nltk wordnet lemmatizer", "Nltk porter stemmer",
+           "Nltk lancaster stemmer", "Nltk snowball stemmer", "None"]
