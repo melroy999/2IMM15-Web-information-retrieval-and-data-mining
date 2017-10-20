@@ -41,6 +41,7 @@ def clutersgraph(X, model):
     tSVD = TruncatedSVD(n_components=2).fit(X)
     data2D = tSVD.transform(X)
 
+    fig = plt.figure(1)
     # Plot graph with all nodes
     plt.scatter(data2D[:,0], data2D[:,1], s=2, c= model.labels_)
 
@@ -48,9 +49,7 @@ def clutersgraph(X, model):
 
     # Plot centroids
     plt.scatter(centers2D[:,0], centers2D[:,1], marker='x', s=200, linewidths=3, c='r')
-
-    # Show the graph
-    plt.show()
+    return fig
 
 
 ##########################################################################################

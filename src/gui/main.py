@@ -12,6 +12,11 @@ from information_retrieval.normalizer import name_to_normalizer
 from information_retrieval.probabilistic_analysis import search_modes, document_probability_modes, okapi_idf_modes, \
     ProbabilisticAnalysis
 
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.figure import Figure
+
 import information_retrieval.clustering as KMclus
 
 # Amount of results we can show.
@@ -566,8 +571,8 @@ class KMeansClusteringFrame(Frame):
         # Get the user input on the values to use
         weight_function = self.weight_function.get()
         stemmer = self.stemmer.get()
-        clusters = self.clusters.get()
-        seeds = self.seeds.get()
+        clusters = int(self.clusters.get())
+        seeds = int(self.seeds.get())
 
         # Change the status.
         update_status("Clustering... This may take a while.")
@@ -597,7 +602,10 @@ class KMeansClusteringFrame(Frame):
                 for i in range(clusters):
                     print(labels[i], counts[i])
 
-                KMclus.clutersgraph(X, model)
+                # When finished, pop up a plot frame.
+                t = PlotFrame(gui, X, model)
+                t.wm_title("Window")
+
             except vsa.EmptyQueryException:  # TODO: What to do here
                 print("Query is empty after normalization, please change the query.")
 
@@ -616,6 +624,27 @@ class KMeansClusteringFrame(Frame):
         # Change the status.
         update_status("Finished searching")
         print()
+
+
+class PlotFrame(Toplevel):
+    def __init__(self, master, X, model):
+        super().__init__(master)
+
+        # Draw the data we want!
+        self.plot = KMclus.clutersgraph(X, model)
+
+        # Instantiate canvas
+        self.canvas = canvas = FigureCanvasTkAgg(self.plot, self)
+
+        # Pack canvas into root window
+        canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+
+        # Instantiate and pack toolbar
+        self.toolbar = toolbar = NavigationToolbar2TkAgg(canvas, self)
+
+        # Show canvas and toolbar
+        toolbar.update()
+        canvas.show()
 
 
 # The part of the GUI which views the results of the indexing and querying.
