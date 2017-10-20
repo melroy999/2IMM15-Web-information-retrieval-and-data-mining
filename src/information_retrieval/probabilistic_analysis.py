@@ -1,4 +1,3 @@
-import string
 from collections import defaultdict
 from functools import reduce
 from operator import mul
@@ -7,7 +6,6 @@ import math
 
 import time
 
-from cleanup_module import cleanup
 from information_retrieval.indexer import Indexer
 from information_retrieval.vector_space_analysis import EmptyQueryException
 
