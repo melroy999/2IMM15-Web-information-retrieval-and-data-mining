@@ -29,7 +29,7 @@ punctuation_removal_table = str.maketrans({key: "" for key in string.punctuation
 punctuation_to_space = str.maketrans({key: " " for key in string.punctuation})
 
 # Remove all punctuation, except for - and .
-punctuation_removal_table_with_exceptions = \
+punctuation_to_space_with_exceptions = \
     str.maketrans({key: " " for key in string.punctuation.replace("-", "").replace(".", "")})
 
 # Remove all numbers, and replace with spaces.
@@ -356,7 +356,7 @@ class _Cleanup:
                     field_value = _Cleanup.remove_control_characters(field_value)
 
                     # Remove all punctuation that will not influence the sentences, i.e. everything except for - and .
-                    field_value = self.remove_punctuation(field_value, punctuation_removal_table_with_exceptions)
+                    field_value = self.remove_punctuation(field_value, punctuation_to_space_with_exceptions)
 
                     # Now we want to remove potential noise from the value, which should reduce the amount of terms.
                     field_value = self.remove_potential_noise(field_value)

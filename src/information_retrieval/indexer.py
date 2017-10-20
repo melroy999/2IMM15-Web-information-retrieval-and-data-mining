@@ -96,12 +96,30 @@ class Indexer(object):
         # Here we do need to normalize the text first...
         cleanup_instance = cleanup.get_cleanup_instance()
         altered_text = cleanup_instance.remove_control_characters(text.lower())
-        altered_text = cleanup_instance.remove_punctuation(altered_text)
+
+        # We have to be careful here. We want to replace all punctuation, except for hyphens and periods.
+        altered_text = cleanup_instance.remove_punctuation(altered_text, cleanup.punctuation_to_space_with_exceptions)
+        altered_text = altered_text.replace("-", " ").replace(".", "")
 
         # Now we can index it, and update it straight afterwards with the idf data.
         text_data = self.index_text(altered_text)
         self.update_text_result(text_data, self.results["collection"][field]["idf"])
         return text_data
+
+    # Normalize the query.
+    def normalize_and_tokenize_query(self, query):
+        # Here we do need to normalize the query first...
+        cleanup_instance = cleanup.get_cleanup_instance()
+        altered_query = cleanup_instance.remove_control_characters(query.lower())
+
+        # We have to be careful here. We want to replace all punctuation, except for hyphens and periods.
+        altered_query = cleanup_instance.remove_punctuation(altered_query,
+                                                            cleanup.punctuation_to_space_with_exceptions)
+        altered_query = altered_query.replace("-", " ").replace(".", "")
+
+        # Now iterate over the query, and find the normalized value.
+        normalizer = self.normalizer
+        return [normalizer.normalize(term) for term in altered_query.split() if normalizer.is_valid_term(term)]
 
     # Update the paper result to also contain tf.idf and wf.idf plus other useful information.
     def update_text_result(self, text_data, idf):
@@ -124,8 +142,13 @@ class Indexer(object):
         # Get the field in question.
         field_value = paper.__getattribute__(field)
 
+        # We have more information we want to add, like the id and year.
+        data = self.index_text(field_value)
+        data["paper_id"] = paper.id
+        data["year"] = paper.year
+
         # Index it with the text indexer.
-        return self.index_text(field_value)
+        return data
 
     # Calculate idf.
     def calc_idf(self, value):

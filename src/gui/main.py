@@ -144,10 +144,14 @@ class BooleanQueryFrame(Frame):
         def runner():
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
-            results = ba.search(query, indexer, target_default_field)
+            try:
+                results = ba.search(query, indexer, target_default_field)
 
-            # Print the results.
-            self.print_results(query, results, result_count)
+                # Print the results.
+                self.print_results(query, results, result_count)
+            except Exception:
+                print("Received an invalid query. Keep in mind that the boolean analysis only supports single word "
+                      "queries (words containing a hyphen are considered multiple words).")
 
             # Finish the analyzing process.
             self.finish_analyzing()
