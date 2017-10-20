@@ -107,3 +107,4 @@ index/
 
 # Files not to ignore.
 !data/readme.txt
+database.sqlite
