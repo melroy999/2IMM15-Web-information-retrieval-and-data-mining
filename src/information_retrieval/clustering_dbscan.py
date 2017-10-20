@@ -2,7 +2,6 @@ from sklearn.cluster import DBSCAN
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
 from information_retrieval.indexer import Indexer
-
 from sklearn.decomposition import TruncatedSVD
 import matplotlib.pyplot as plt
 
