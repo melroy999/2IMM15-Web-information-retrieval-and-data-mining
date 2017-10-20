@@ -1,3 +1,4 @@
+import string
 from collections import defaultdict
 from functools import reduce
 from operator import mul
@@ -5,10 +6,6 @@ from operator import mul
 import math
 
 import time
-
-import sys
-
-import gc
 
 from cleanup_module import cleanup
 from information_retrieval.indexer import Indexer
@@ -49,18 +46,6 @@ class ProbabilisticAnalysis:
         self.okapi_summand = None
         self.okapi_idf_mode = None
         self.idf = defaultdict(int)
-
-    # Normalize the query.
-    @staticmethod
-    def normalize_and_tokenize_query(query, indexer):
-        # Here we do need to normalize the query first...
-        cleanup_instance = cleanup.get_cleanup_instance()
-        altered_query = cleanup_instance.remove_control_characters(query.lower())
-        altered_query = cleanup_instance.remove_punctuation(altered_query)
-
-        # Now iterate over the query, and find the normalized value.
-        normalizer = indexer.normalizer
-        return [normalizer.normalize(term) for term in altered_query.split() if normalizer.is_valid_term(term)]
 
     # Calculate the probability for a given document, using smooth mixed multinomial.
     # Here low lambda is more suitable for longer queries, and high lambda is more suitable for queries that desire all
@@ -165,7 +150,7 @@ class ProbabilisticAnalysis:
                _lambda=0.0,
                k_1=2.0, b=0.75, delta=1.0, epsilon=0.5):
         # Now we can split the query, and we will have our tokens.
-        query_tokens = self.normalize_and_tokenize_query(query, indexer)
+        query_tokens = indexer.normalize_and_tokenize_query(query)
 
         # Remove duplicates if required.
         if remove_duplicates:

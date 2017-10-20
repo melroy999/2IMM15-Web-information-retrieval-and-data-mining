@@ -7,6 +7,8 @@ The following structure is adhered to in the indexing:
             $paper_id: {
                 "number_of_terms": int,
                 "number_of_unique_terms": int,
+                "paper_id": $paper_id,
+                "year": int,
                 "tf": dict,
                 "wf": dict,
                 "tf.idf": dict,
