@@ -1,4 +1,3 @@
-from information_retrieval.indexer import Indexer
 from import_data import database
 
 

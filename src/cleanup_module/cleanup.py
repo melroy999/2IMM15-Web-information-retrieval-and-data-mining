@@ -1,4 +1,3 @@
-import json
 import string
 import unicodedata
 import time
@@ -7,7 +6,6 @@ from collections import defaultdict
 import pickle
 
 import import_data.database as db
-import re
 
 from information_retrieval.normalizer import Normalizer
 
@@ -118,6 +116,10 @@ class _Cleanup:
 
         # Introduce a normalizer.
         self.normalizer = Normalizer("Nltk wordnet lemmatizer", False)
+        self.original_terms = set()
+        self.new_terms = set()
+        self.original_terms_total_count = 0
+        self.new_terms_total_count = 0
 
     # Remove terms in the text that are potentially noise.
     # This is the case for combinations of long numbers and long strings.
@@ -134,9 +136,15 @@ class _Cleanup:
             if i < len(tokens) - 1:
                 next_word = tokens[i + 1]
 
+            self.original_terms.add(token)
+            self.original_terms_total_count += 1
+
             # Check whether the token word exists as a real word, or is likely to be one.
             valid_word = self.validate_word_existence(token, next_word)
             if valid_word is not None:
+                for term in valid_word.split():
+                    self.new_terms.add(term)
+                    self.new_terms_total_count += 1
                 output_tokens.append(valid_word)
 
         # Rebuild the string.
@@ -332,11 +340,12 @@ class _Cleanup:
             db.recalculate_paper_pointers()
         except FileNotFoundError:
             # Print a warning that they should download the file, instead of waiting here for completion.
-            print("Warning: cleanup can take up to 20 minutes. Please download the 'papers_with_cleanup.pickle' file "
-                  "found on google drive.")
+            print("Warning: cleanup can take up to 5 minutes.")
 
-            for paper in _papers:
-                print(paper.id)
+            print("Progress...")
+            for i, paper in enumerate(_papers):
+                if i % 650 == 0 and i > 0:
+                    print(str(10 * i // 650) + "%")
 
                 # We have multiple fields we want to clean up.
                 for field in clean_up_paper_fields:
@@ -370,6 +379,21 @@ class _Cleanup:
         with open("../../data/" + filename + ".pickle", "rb") as input_file:
             return pickle.load(input_file)
 
+    def print_table(self):
+        print("\\begin{table}[]")
+        print("\\centering")
+        print("\\caption{Preprocessing results table}")
+        print("\\label{PreprocessingResultsTable}")
+        print("\\begin{tabular}{l|lll}")
+        print("rule & occurrences & total time & time per operation \\\\")
+        print("\\hline")
+        for term in sorted(self.scratch_list.keys()):
+            print(term.replace("_", "\\_"), self.scratch_list[term], "%.5f" % self.timing_list[term],
+                  "%.5e" % (self.timing_list[term] / self.scratch_list[term]), sep=" & ", end="\\\\ \n")
+
+        print("\\end{tabular}")
+        print("\\end{table}")
+
 
 if __name__ == "__main__":
     start = time.time()
@@ -378,14 +402,14 @@ if __name__ == "__main__":
 
     print(_cleanup.scratch_list)
     print(_cleanup.timing_list)
+    print("Original amount of terms:", _cleanup.original_terms_total_count)
+    print("New amount of terms:", _cleanup.new_terms_total_count)
+    print("Original amount of unique terms:", len(_cleanup.original_terms))
+    print("New amount of unique terms:", len(_cleanup.new_terms))
     print()
 
-    for term in _cleanup.scratch_list:
-        # Print both the amount of occurrences, and the time.
-        print("rule:", term)
-        print("number of occurrences:", _cleanup.scratch_list[term])
-        print("total time:", _cleanup.timing_list[term])
-        print("time per operation:", _cleanup.timing_list[term] / _cleanup.scratch_list[term])
-        print()
+    _cleanup.print_table()
+
+    print()
 
     print("Total running time:", time.time() - start)

@@ -1,8 +1,4 @@
 import json
-import pickle
-
-import time
-from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.stem import *
 
 # Different lemmatizers we can use.

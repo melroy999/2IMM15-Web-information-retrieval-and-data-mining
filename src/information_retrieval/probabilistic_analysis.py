@@ -6,10 +6,6 @@ import math
 
 import time
 
-import sys
-
-import gc
-
 from cleanup_module import cleanup
 from information_retrieval.indexer import Indexer
 from information_retrieval.vector_space_analysis import EmptyQueryException

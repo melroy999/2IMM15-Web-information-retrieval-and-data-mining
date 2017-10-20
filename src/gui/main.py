@@ -3,11 +3,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
-import time
-
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
-from gui.util import create_tool_tip
 from import_data import database
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
@@ -231,10 +228,9 @@ class VectorSpaceQueryFrame(Frame):
         self.result_count_label.grid(row=1, column=4, sticky=W)
         self.result_count_field.grid(row=1, column=5, sticky=W, padx=10)
 
-        self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers")
+        self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers based on title")
         self.find_comparable_papers.state(['!alternate'])
         self.find_comparable_papers.grid(row=1, column=5, sticky=E, padx=(0, 10))
-        create_tool_tip(self.find_comparable_papers, "Enter the paper's title to find similar papers.")
 
     # Start analyzing the query and find results.
     def start_analyzing(self):
@@ -404,7 +400,7 @@ class ProbabilisticQueryFrame(Frame):
 
         self.remove_duplicate_terms = ttk.Checkbutton(self.options_frame, text="Remove duplicate terms in query")
         self.remove_duplicate_terms.state(['!alternate'])
-        self.remove_duplicate_terms.grid(row=1, column=5, sticky=W, padx=10)
+        self.remove_duplicate_terms.grid(row=1, column=5, sticky=E, padx=10)
 
         # Create a new frame for better looks.
         self.slider_frame = Frame(self)
@@ -604,7 +600,7 @@ def disable_search_buttons():
 if __name__ == '__main__':
     root = Tk()
     root.title("[2IMM15] - Information retrieval module")
-    root.minsize(width=1200, height=800)
+    root.minsize(width=1500, height=800)
 
     gui = InterfaceRoot(root)
 

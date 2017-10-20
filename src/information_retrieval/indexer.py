@@ -1,5 +1,4 @@
 import gc
-import json
 from collections import Counter, defaultdict
 
 import time
