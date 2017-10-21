@@ -76,8 +76,10 @@ class ProbabilisticAnalysis:
         chances = {}
         for paper_id, paper_frequencies in indexer.results["papers"][field].items():
             # Calculate the probability.
-            chances[paper_id] = self.calc_mixture_model_probability(query_tokens, paper_frequencies,
-                                                                    collection_frequencies, p_d)
+            prob = self.calc_mixture_model_probability(query_tokens, paper_frequencies, collection_frequencies, p_d)
+
+            if not math.isclose(prob, 0.0, abs_tol=1e-50):
+                chances[paper_id] = prob
 
         # Now we can find the papers with the highest chance.
         return sorted(chances.items(), key=lambda x: x[1], reverse=True)
@@ -133,8 +135,10 @@ class ProbabilisticAnalysis:
         chances = {}
         for paper_id, paper_frequencies in indexer.results["papers"][field].items():
             # Calculate the probability.
-            chances[paper_id] = \
-                self.calc_okapi_bm25(query_tokens, paper_frequencies, collection_frequencies, n, avg_dl, k_1, b)
+            prob = self.calc_okapi_bm25(query_tokens, paper_frequencies, collection_frequencies, n, avg_dl, k_1, b)
+
+            if not math.isclose(prob, 0.0, abs_tol=1e-50):
+                chances[paper_id] = prob
 
         # Now we can find the papers with the highest chance.
         return sorted(chances.items(), key=lambda x: float(x[1]), reverse=True)
@@ -142,7 +146,7 @@ class ProbabilisticAnalysis:
     # Do the search for the given query, using the unigram language model.
     def search(self, query, indexer, field,
                search_mode_name=search_modes[0],
-               document_probability_mode_name="Equal Probability",
+               document_probability_mode_name="Equal probability",
                okapi_idf_mode_name=okapi_idf_modes[1],
                remove_duplicates=True,
                _lambda=0.0,
@@ -192,14 +196,14 @@ class ProbabilisticAnalysis:
             print("- Target field:", field)
             print("- Remove duplicate terms in query:", remove_duplicates)
             print("- Document probability mode:", document_probability_mode_name)
-            print(u"- \u03BB:", _lambda)
+            # print(u"- \u03BB:", _lambda)
             print()
             return self.search_mixture_model(query_tokens, indexer, field, document_probability_mode_name)
         elif search_mode_name == "Okapi BM25":
-            self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
+            #self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
             return self.search_okapi_bm25(query_tokens, indexer, field, k_1, b)
         elif search_mode_name == "Okapi BM25+":
-            self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
+            #self.print_okapi_mode_parameters(search_mode_name, okapi_idf_mode_name, remove_duplicates, field)
             # Here we need to set delta to the user defined value.
             self.delta = delta
             return self.search_okapi_bm25(query_tokens, indexer, field, k_1, b)
