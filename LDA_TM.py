@@ -7,14 +7,22 @@ import pandas as pd
 from sklearn.manifold import TSNE
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 import random 
-random.seed(13)
 
 #visualization packages
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib
 import seaborn as sns
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from keras.utils import to_categorical 
+from keras.callbacks import EarlyStopping
+
 
 class LDA_TM:
     
@@ -31,22 +39,26 @@ class LDA_TM:
         self.df_map.paper_id=self.df_map.paper_id.astype(str)
         self.df_map.author_id=self.df_map.author_id.astype(str)
         self.df_authors.id=self.df_authors.id.astype(str)
+        self.load_data()
         self.model_name=model_name+'.lda'
         self.doc_vecs_name=model_name+'_doc_vecs.p'
         self.tsne_name=model_name+'_tsne.p'
         self.author_top_topic_by_year_name=model_name+'_author_top_topic_by_year.p'
         self.year_dist_name=model_name+'_year_dist.p'
+        self.kmeans_name=model_name+'_kmeans.p'
+        self.keras_cl_model_name=model_name+'_keras.p'
+    
         
         
     def load_existing_model(self):
-        self.load_data()
         self.load_LDA_model(self.model_name)
         self.load_doc_vecs(self.doc_vecs_name)
         self.topic_labels=['Topic #'+str(i+1) for i in range(self.model.num_topics)]
         self.load_Tsne_embedding()
         self.year_dist=self.load_year_dist()
         self.load_author_top_topic_by_year_matrix()
-        
+        self.load_kmeans()
+        self.load_classification_model()
         
         
         
@@ -84,17 +96,27 @@ class LDA_TM:
         print("\nLoading Year Distribution Matrix from %s" %self.year_dist_name)
         return pickle.load(open(self.year_dist_name,"rb"))
     
+    def load_kmeans(self):
+        print("\nLoading Kmeans Clustering data from %s" %self.kmeans_name)
+        self.kmeans= pickle.load(open(self.kmeans_name,"rb"))
+    
     def load_author_top_topic_by_year_matrix(self):
         print("\nLoading Author Top Topic of year Matrix from %s" %self.author_top_topic_by_year_name)
         self.author_top_topic_by_year=np.array(pickle.load(open(self.author_top_topic_by_year_name,"rb")))
+    
+    def load_classification_model(self):
+        print("\nLoading Keras classification mode from %s" %self.keras_cl_model_name)
+        self.keras_cl_model= pickle.load(open(self.keras_cl_model_name,"rb"))
+    
+        
         
     
         
     
-    def create_LDA_model(self,num_topics,alpha='auto'):
+    def create_LDA_model(self,num_topics,alpha='auto',eta='auto'):
         print('\nSetting number of topics to :%d ' %num_topics)
         print('\nCreating Model')
-        self.model = gensim.models.LdaModel(self.corpus, id2word=self.dictionary, alpha=alpha, num_topics=num_topics)
+        self.model = gensim.models.LdaModel(self.corpus, id2word=self.dictionary, alpha=alpha,eta=eta,num_topics=num_topics)
         print('\nSavind Model as %s' %self.model_name)
         self.model.save(self.model_name)
         print('\nmodel saved')
@@ -107,6 +129,13 @@ class LDA_TM:
         self.create_topic_dist_for_all_years()
         print('\nCreating Author Top Topic by Year Matrix')
         self.create_top_topic_by_year_matrix_of_all_authors()
+        print('\nComputing per word bound')
+        self.compute_per_word_bound()
+        print('\n Creating Clustering:')
+        self.create_doc_clustering(self.model.num_topics)
+        print('\nCreating Classification fro  cluster Data')
+        self.create_classification_from_cluster_data()
+        
         
         
         
@@ -154,6 +183,62 @@ class LDA_TM:
             p.append(self.plot_top_topic_of_author_by_year(self.plot_author_evolution_plot(i,plot=False),plot=False))
         pickle.dump(p,open(self.author_top_topic_by_year_name,"wb"))
         return p
+    
+    def plot_doc_clustering_interia(self,max_cluster=100,min_cluster=3):
+        nips=self.model
+        doc_vecs = self.doc_vecs
+        X=[matutils.sparse2full(doc, nips.num_topics) for doc in doc_vecs]
+        inertianew=[]
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X_new=scaler.transform(X)
+        
+        for i in range(min_cluster,max_cluster):
+            print('\nCreating K means clusters with cluters=%d'%i)
+            kmeans = KMeans(n_clusters=i, random_state=0).fit(X_new)
+            inertianew.append(kmeans.inertia_)
+        
+        plt.plot(list(range(min_cluster,max_cluster)),inertianew)
+        plt.show()
+        return inertianew
+    
+    def create_doc_clustering(self,n_clusters):
+        print('\nCreating K means clusters with cluters=%d'%n_clusters)
+        nips=self.model
+        doc_vecs = self.doc_vecs
+        X=[matutils.sparse2full(doc, nips.num_topics) for doc in doc_vecs]
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X_new=scaler.transform(X)
+        self.kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(X_new)
+        pickle.dump(self.kmeans,open(self.kmeans_name,'wb'))
+    
+    def create_classification_from_cluster_data(self):
+        print('\nCreating deep learning classification')
+        nips=self.model
+        doc_vecs = self.doc_vecs
+        X=[matutils.sparse2full(doc, nips.num_topics) for doc in doc_vecs]
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X_new=scaler.transform(X)
+        cluster_data=self.kmeans.predict(X_new)
+        target=to_categorical(cluster_data)
+        model=Sequential()
+        model.add(Dense(100, activation='relu', input_shape = (self.model.num_topics,)))
+        model.add(Dense(100, activation='relu'))
+        model.add(Dense(100, activation='relu'))
+        model.add(Dense(target.shape[1], activation='softmax'))
+        model.compile(optimizer='adam', loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+        early_stopping_monitor = EarlyStopping(patience=5) 
+
+        model.fit(X_new, target,validation_split=0.3,epochs=50,callbacks=[early_stopping_monitor])
+        self.keras_cl_model=model
+        pickle.dump(model,open(self.keras_cl_model_name,"wb"))
+        
+        
+        
+
 
     
    
@@ -375,11 +460,14 @@ class LDA_TM:
         df=pd.DataFrame({'Id':top_id,'Author':top_name,'Frequency':top_f})
         return df
         
-    
+    def compute_per_word_bound(self):
+        corpus_words = sum(cnt for document in self.corpus for _, cnt in document)
+        self.per_word_bound=self.model.bound(self.corpus)/corpus_words
 
 if __name__=='__main__':
-    Tm=LDA_TM('nipsLDA')
-    #Tm.create_LDA_model(10)
+    n_topics=25
+    Tm=LDA_TM('LDA'+str(n_topics))
+    #Tm.create_LDA_model(n_topics)
     Tm.load_existing_model()
     #Tm.plot_author_evolution_plot('13')
     #Tm.get_author_topic_dist_for_year('13',1993)
@@ -388,8 +476,10 @@ if __name__=='__main__':
     #Tm.print_top_topics_of_year(1993)
     #Tm.print_top_titles_by_topic()
     #df=Tm.find_most_frequent_authors()
-
-    
+    #Tm.compute_per_word_bound()
+    #Tm.plot_doc_clustering_interia()
+    #Tm.create_doc_clustering(25)
+    Tm.create_classification_from_cluster_data();
     
 
         
