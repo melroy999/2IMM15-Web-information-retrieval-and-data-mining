@@ -28,15 +28,39 @@ def search_vector_query(query):
 
         if scores is not None:
             # Print the scores.
-            print(query, scores, result_count)
+            #print(query, scores, result_count)
+            return query, scores, result_count
     except vsa.EmptyQueryException:
         print("Query is empty after normalization, please change the query.")
 
-for attr_set in label_attributes:
-    for feature in attr_set.split(','):
-        search_vector_query(feature)
+
+add_labels = []
 
 
+def find_labels():
+    for attr_set in label_attributes:
+        one_label = []
+        for feature in attr_set.split(','):
+            one_feature = []
+            _, id, _ = search_vector_query(feature)
+            for x in range(0, result_count-1):
+                if (id[x][1] > 0.1):
+                    #print(id[x][0])
+                    one_feature.append(id[x][0])
+                    #print(one_feature)
+            for y in range(0, len(one_feature)):
+                one_label.append(one_feature[y])
+            #print(one_label, "\n")
+        add_labels.append(one_label)
+    #real_labels = []
+    for z in range(0, 9):
+        print(add_labels[z], "\n")
+     #   for j in range(0, len(add_labels[y])):
+      #      for number in add_labels[y][j]:
+       #         real_labels.append(number)
+
+
+find_labels()
 
 '''
 #DEMO on https://www.digitalocean.com/community/tutorials/how-to-build-a-machine-learning-classifier-in-python-with-scikit-learn
