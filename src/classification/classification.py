@@ -2,7 +2,11 @@ import information_retrieval.vector_space_analysis as vsa
 from information_retrieval.indexer import Indexer
 from sklearn.svm import LinearSVC
 from sklearn.svm import SVC
+from sklearn.naive_bayes import BernoulliNB
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import linear_model
 
 #Labels from https://nips.cc/Conferences/2017/CallForPapers
 label_names = ["Algorithms", "Probabilistic Methods", "Optimization", "Applications", "Reinforcement Learning and Planning", "Theory", "Neuroscience and Cognitive Science", "Deep Learning", "Data, Competitions, Implementations, and Software"]
@@ -105,39 +109,39 @@ print(len(ground_truth))
 #      [4, 4, 2, 1]]
 # y = [1, 2, 3, 4]
 
-clf = LinearSVC(random_state=0)
-clf.fit(data, ground_truth)
+classifier = LinearSVC(random_state=0)
+classifier.fit(data, ground_truth)
 LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
      intercept_scaling=1, loss='squared_hinge', max_iter=1000,
      multi_class='ovr', penalty='l2', random_state=0, tol=0.0001,
      verbose=0)
-#print(clf.coef_)
-#print(clf.intercept_)
+print("Number of predictions: ", len(classifier.predict(data)))
+print()
 print("LinearSVC:")
-print(clf.predict([data[1]]))
-print(clf.predict([data[100]]))
-print(clf.predict([data[200]]))
-print(clf.predict([data[300]]))
-print(clf.predict([data[400]]))
-print(clf.predict([data[500]]))
-print(clf.predict([data[600]]))
-print(clf.predict([data[700]]))
-print(clf.predict([data[800]]))
-print(clf.predict([data[994]]))
+print(classifier.predict(data))
 
+classifier = OneVsRestClassifier(SVC(kernel='linear'))
+classifier.fit(data, ground_truth)
 print("OneVsRestClassifier:")
-classif = OneVsRestClassifier(SVC(kernel='linear'))
-classif.fit(data, ground_truth)
-print(classif.predict([data[1]]))
-print(classif.predict([data[100]]))
-print(classif.predict([data[200]]))
-print(classif.predict([data[300]]))
-print(classif.predict([data[400]]))
-print(classif.predict([data[500]]))
-print(classif.predict([data[600]]))
-print(classif.predict([data[700]]))
-print(classif.predict([data[800]]))
-print(classif.predict([data[994]]))
+print(classifier.predict(data))
+
+classifier = BernoulliNB()
+classifier.fit(data, ground_truth)
+BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
+print("BernoulliNB:")
+print(classifier.predict(data))
+
+
+classifier = DecisionTreeClassifier(random_state=0)
+classifier.fit(data, ground_truth)
+print("DecisionTreeClassifier:")
+print(classifier.predict(data))
+
+classifier = KNeighborsClassifier(n_neighbors=5)
+classifier.fit(data, ground_truth)
+print("KNeighborsClassifier:")
+print(classifier.predict(data))
+
 #DEMO on https://www.digitalocean.com/community/tutorials/how-to-build-a-machine-learning-classifier-in-python-with-scikit-learn
 '''
 from sklearn.datasets import load_breast_cancer
