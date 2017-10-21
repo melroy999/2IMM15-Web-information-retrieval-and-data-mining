@@ -18,6 +18,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 
 import information_retrieval.clustering as KMclus
+import information_retrieval.clustering_dbscan as DBclus
 
 # Amount of results we can show.
 results_to_show = [10, 20, 50, 100, 1000, 10000]
@@ -557,11 +558,11 @@ class KMeansClusteringFrame(Frame):
         self.clusters_label.grid(row=2, column=1, sticky=W)
         self.clusters.grid(row=2, column=2, sticky=W)
 
-        self.seeds_label = ttk.Label(self, text="Number of Seeds: ")
-        self.seeds = ttk.Entry(self)
+        self.runs_label = ttk.Label(self, text="Number of Runs: ")
+        self.runs = ttk.Entry(self)
 
-        self.seeds_label.grid(row=2, column=3, sticky=W)
-        self.seeds.grid(row=2, column=4, sticky=W)
+        self.runs_label.grid(row=2, column=3, sticky=W)
+        self.runs.grid(row=2, column=4, sticky=W)
 
     # Start analyzing the query and find results.
     def start_analyzing(self):
@@ -571,8 +572,19 @@ class KMeansClusteringFrame(Frame):
         # Get the user input on the values to use
         weight_function = self.weight_function.get()
         stemmer = self.stemmer.get()
-        clusters = int(self.clusters.get())
-        seeds = int(self.seeds.get())
+        # Check that all values are filled in
+        if (self.clusters.get() != ''):
+            clusters = int(self.clusters.get())
+        else:
+            print("Please fill in a value for clusters")
+            enable_search_buttons()
+            return
+        if (self.runs.get() != ''):
+            runs = int(self.runs.get())
+        else:
+            print("Please fill in a value for runs")
+            enable_search_buttons()
+            return
 
         # Change the status.
         update_status("Clustering... This may take a while.")
@@ -581,29 +593,17 @@ class KMeansClusteringFrame(Frame):
         print("- Weight function:", weight_function)
         print("- Stemmer:", stemmer)
         print("- Clusters:", clusters)
-        print("- Seeds:", seeds)
+        print("- Runs:", runs)
         print()
 
         # Initialize the analyzer.
         def runner():
-            # Check if all fields are filled in
             # Calculate the scores.
-            # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
-                terms, order_centroids, labels, counts, X, model = KMclus.clusterKMeans(stemmer, weight_function,
-                                                                                clusters, seeds)
-
-                for i in range(clusters):
-                    print("Cluster %d:" % i, '\n')
-                    for ind in order_centroids[i, :10]:
-                        print(' %s' % terms[ind], )
-                    print('\n')
-
-                for i in range(clusters):
-                    print(labels[i], counts[i])
+                X, model = KMclus.clusterKMeans(stemmer, weight_function, clusters, runs)
 
                 # When finished, pop up a plot frame.
-                t = PlotFrame(gui, X, model)
+                t = PlotFrame(gui, X, model, "KM")
                 t.wm_title("Window")
 
             except vsa.EmptyQueryException:  # TODO: What to do here
@@ -622,16 +622,19 @@ class KMeansClusteringFrame(Frame):
         enable_search_buttons()
 
         # Change the status.
-        update_status("Finished searching")
+        update_status("Finished clustering")
         print()
 
 
 class PlotFrame(Toplevel):
-    def __init__(self, master, X, model):
+    def __init__(self, master, X, model, algorithm, n_clusters):
         super().__init__(master)
 
         # Draw the data we want!
-        self.plot = KMclus.clutersgraph(X, model)
+        if (algorithm == "KM"):
+            self.plot = KMclus.clutersgraph(X, model)
+        else:
+            self.plot = DBclus.clustergraph(X, model, n_clusters)
 
         # Instantiate canvas
         self.canvas = canvas = FigureCanvasTkAgg(self.plot, self)

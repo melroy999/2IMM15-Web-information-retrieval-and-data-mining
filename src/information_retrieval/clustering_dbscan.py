@@ -1,6 +1,7 @@
 from sklearn.cluster import DBSCAN
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.metrics import silhouette_score
 from information_retrieval.indexer import Indexer
 from sklearn.decomposition import TruncatedSVD
 import matplotlib.pyplot as plt
@@ -30,6 +31,9 @@ def cluster(stemmer, function, eps, min_samples):
 
     unique_labels, counts = np.unique(db.labels_[db.labels_>=0], return_counts=True)
 
+    sil_coeff = silhouette_score(X, db.labels_, metric='euclidean')
+    print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_clusters_, sil_coeff))
+
     return X, db, n_clusters_, unique_labels, counts
 
 def clustergraph(X, db, n_clusters):
@@ -39,18 +43,26 @@ def clustergraph(X, db, n_clusters):
     tSVD = TruncatedSVD(n_components=2).fit(X)
     data2D = tSVD.transform(X)
 
+    fig = plt.figure(1)
     # Plot graph with all nodes
     plt.scatter(data2D[:,0], data2D[:,1], s=2, c=db.labels_)
 
     plt.title('Estimated number of clusters: %d' % n_clusters)
-    plt.show()
+    return fig
 
-##########################################################################################
-eps = 1.2
-min_samples = 25
-X, db, n_clusters, unique_labels, counts = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
+# ##########################################################################################
+# eps = 1.2
+# min_samples = 25
+# X, db, n_clusters, unique_labels, counts = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
+#
+# for i in range(n_clusters):
+#     print(unique_labels[i], counts[i])
+#
+# clustergraph(X, db, n_clusters)
 
-for i in range(n_clusters):
-    print(unique_labels[i], counts[i])
+# The scoring measures the user can choose from.
+scoring_measures = ["tf.idf", "wf.idf"]
 
-clustergraph(X, db, n_clusters)
+# Choices for stemmer
+stemmer = ["Nltk wordnet lemmatizer", "Nltk porter stemmer",
+           "Nltk lancaster stemmer", "Nltk snowball stemmer", "None"]
