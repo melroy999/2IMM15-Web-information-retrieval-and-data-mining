@@ -135,10 +135,8 @@ class ProbabilisticAnalysis:
         chances = {}
         for paper_id, paper_frequencies in indexer.results["papers"][field].items():
             # Calculate the probability.
-            prob = self.calc_okapi_bm25(query_tokens, paper_frequencies, collection_frequencies, n, avg_dl, k_1, b)
-
-            if not math.isclose(prob, 0.0, abs_tol=1e-50):
-                chances[paper_id] = prob
+            chances[paper_id] = self.calc_okapi_bm25(query_tokens, paper_frequencies, collection_frequencies, n,
+                                                     avg_dl, k_1, b)
 
         # Now we can find the papers with the highest chance.
         return sorted(chances.items(), key=lambda x: float(x[1]), reverse=True)
