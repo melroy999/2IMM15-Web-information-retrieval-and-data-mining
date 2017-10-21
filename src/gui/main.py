@@ -574,15 +574,21 @@ class KMeansClusteringFrame(Frame):
         stemmer = self.stemmer.get()
         # Check that all values are filled in
         if (self.clusters.get() != ''):
-            clusters = int(self.clusters.get())
+            if (int(self.clusters.get()) > 0):
+                clusters = int(self.clusters.get())
+            else:
+                print("Please fill in a value greater than 0 for clusters")
         else:
-            print("Please fill in a value for clusters")
+            print("Please fill in a value greater than 0 for clusters")
             enable_search_buttons()
             return
         if (self.runs.get() != ''):
-            runs = int(self.runs.get())
+            if (int(self.runs.get()) > 0):
+                runs = int(self.runs.get())
+            else:
+                print("Please fill in a value greater than 0 for runs")
         else:
-            print("Please fill in a value for runs")
+            print("Please fill in a value greater than 0 for runs")
             enable_search_buttons()
             return
 
@@ -603,7 +609,7 @@ class KMeansClusteringFrame(Frame):
                 X, model = KMclus.clusterKMeans(stemmer, weight_function, clusters, runs)
 
                 # When finished, pop up a plot frame.
-                t = PlotFrame(gui, X, model, "KM")
+                t = PlotFrame(gui, X, model, "KM", 0)
                 t.wm_title("Window")
 
             except vsa.EmptyQueryException:  # TODO: What to do here
