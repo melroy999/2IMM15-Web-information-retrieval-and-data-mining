@@ -21,22 +21,24 @@ def clusterKMeans(stemmer, function, clusters, seeds):
     model = KMeans(n_clusters=clusters, init='k-means++', n_init=seeds)
     model.fit_transform(X)
 
-    # Print top terms per cluster clusters
+    # Print top terms per cluster clusters, getting and sorting centroids and terms
     print("Top terms per cluster:")
     order_centroids = model.cluster_centers_.argsort()[:, ::-1]
     terms = vectorizer.get_feature_names()
 
-    labels, counts = np.unique(model.labels_[model.labels_>=0], return_counts=True)
-
+    # Print top terms per cluster clusters, actually printing them
     for i in range(clusters):
         print("Cluster %d:" % i, '\n')
         for ind in order_centroids[i, :10]:
             print(' %s' % terms[ind], )
         print('\n')
 
+    # Getting and printing the clusters and amount of points in them
+    labels, counts = np.unique(model.labels_[model.labels_ >= 0], return_counts=True)
     for i in range(clusters):
         print(labels[i], counts[i])
 
+    # Computing and printing silhouette score
     sil_coeff = silhouette_score(X, model.labels_, metric='euclidean')
     print("For n_clusters={}, The Silhouette Coefficient is {}".format(clusters, sil_coeff))
 
@@ -59,16 +61,6 @@ def clutersgraph(X, model):
     plt.scatter(centers2D[:,0], centers2D[:,1], marker='x', s=20, linewidths=3, c='r')
     return fig
 
-
-##########################################################################################
-# Evaluation
-# from sklearn.metrics import silhouette_score
-#
-# for n_cluster in range(2, 50):
-#     kmeans = KMeans(n_clusters=n_cluster, init='k-means++', max_iter=100, n_init=1).fit(X)
-#     label = kmeans.labels_
-#     sil_coeff = silhouette_score(X, label, metric='euclidean')
-#     print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_cluster, sil_coeff))
 
 # The scoring measures the user can choose from.
 scoring_measures = ["tf.idf", "wf.idf"]

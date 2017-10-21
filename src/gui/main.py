@@ -564,6 +564,9 @@ class KMeansClusteringFrame(Frame):
         self.runs_label.grid(row=2, column=3, sticky=W)
         self.runs.grid(row=2, column=4, sticky=W)
 
+        # TODO: First get DBSCAN working
+        # TODO: Secondly, add more options for both such as a choice for silhouette score and amount of
+
     # Start analyzing the query and find results.
     def start_analyzing(self):
         # Disable the index and search buttons, as we don't want it to be pressed multiple times.
