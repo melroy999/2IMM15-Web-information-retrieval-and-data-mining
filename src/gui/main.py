@@ -11,6 +11,8 @@ from import_data import database
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
 
+from import_data.crawler_database import get_info
+
 # Amount of results we can show.
 from information_retrieval.probabilistic_analysis import search_modes, document_probability_modes, okapi_idf_modes, \
     ProbabilisticAnalysis
@@ -118,6 +120,11 @@ class BooleanQueryFrame(Frame):
         self.result_count_label.grid(row=1, column=2, sticky=W)
         self.result_count_field.grid(row=1, column=3, sticky=W, padx=10)
 
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=1, column=5, sticky=W, padx=(550,0))
+
     # Start analyzing the query and find results.
     def start_analyzing(self):
         # Get the query.
@@ -155,9 +162,10 @@ class BooleanQueryFrame(Frame):
 
                 # Print the results.
                 self.print_results(query, results, result_count)
-            except Exception:
+            except Exception as e:
                 print("Received an invalid query. Keep in mind that the boolean analysis only supports single word "
                       "queries (words containing a hyphen are considered multiple words).")
+                print(e)
 
             # Finish the analyzing process.
             self.finish_analyzing()
@@ -186,7 +194,10 @@ class BooleanQueryFrame(Frame):
 
         for i in range(0, min(len(results), top_x)):
             paper = results[i]
-            print(paper.id, "\t", paper.stored_title)
+            crawled_data = ""
+            if gui.boolean_query_space.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(paper.stored_title)
+            print(paper.id, "\t", paper.stored_title, "\t", crawled_data)
 
 
 # The part of the GUI which handles vector space query settings and functions.
@@ -241,6 +252,11 @@ class VectorSpaceQueryFrame(Frame):
         self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers based on title")
         self.find_comparable_papers.state(['!alternate'])
         self.find_comparable_papers.grid(row=1, column=5, sticky=E, padx=(0, 10))
+
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=2, column=5, sticky=W, padx=(0,0))
 
     # Start analyzing the query and find results.
     def start_analyzing(self):
@@ -317,8 +333,12 @@ class VectorSpaceQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, score = scores[i]
+            title =  database.paper_id_to_paper[paper_id].stored_title
+            crawled_data = ""
+            if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(title)
             print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t",
-                  database.paper_id_to_paper[paper_id].stored_title)
+                  title, "\t", crawled_data)
 
 
 # A helper class to make combo boxes a bit more organized.
@@ -447,6 +467,11 @@ class ProbabilisticQueryFrame(Frame):
         self.result_count_label.grid(row=0, column=5, sticky=E)
         self.result_count_field.grid(row=0, column=6, sticky=E, padx=10)
 
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=3, column=1, sticky=W, padx=(0, 0))
+
         self.probability_searcher = ProbabilisticAnalysis()
 
     # Start analyzing the query and find results.
@@ -526,8 +551,11 @@ class ProbabilisticQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, probability = scores[i]
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",
-                  database.paper_id_to_paper[paper_id].stored_title)
+            title = database.paper_id_to_paper[paper_id].stored_title
+            crawled_data = ""
+            if gui.probabilistic_query_frame.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(title)
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",title, "\t", crawled_data)
 
 
 # The part of the GUI which views the results of the indexing and querying.
