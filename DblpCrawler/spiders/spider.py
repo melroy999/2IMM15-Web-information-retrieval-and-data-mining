@@ -7,7 +7,7 @@ import re
 class DblpCrawler(scrapy.Spider):
 
     name = 'dblpcrawler'
-    max_iterations = 2
+    max_iterations = 10000
     iteration = 0
 
     def start_requests(self):
