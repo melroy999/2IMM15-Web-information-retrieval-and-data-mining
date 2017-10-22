@@ -12,10 +12,19 @@ from classification import classification
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
 
-# Amount of results we can show.
+from import_data.crawler_database import get_info
 from information_retrieval.probabilistic_analysis import search_modes, document_probability_modes, okapi_idf_modes, \
     ProbabilisticAnalysis
 
+import matplotlib
+
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+
+import information_retrieval.clustering as KMclus
+import information_retrieval.clustering_dbscan as DBclus
+
+# Amount of results we can show.
 results_to_show = [10, 20, 50, 100, 1000, 10000]
 
 
@@ -120,6 +129,11 @@ class BooleanQueryFrame(Frame):
         self.result_count_label.grid(row=1, column=2, sticky=W)
         self.result_count_field.grid(row=1, column=3, sticky=W, padx=10)
 
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=1, column=5, sticky=W, padx=(550, 0))
+
     # Start analyzing the query and find results.
     def start_analyzing(self):
         # Get the query.
@@ -157,9 +171,10 @@ class BooleanQueryFrame(Frame):
 
                 # Print the results.
                 self.print_results(query, results, result_count)
-            except Exception:
+            except Exception as e:
                 print("Received an invalid query. Keep in mind that the boolean analysis only supports single word "
                       "queries (words containing a hyphen are considered multiple words).")
+                print(e)
 
             # Finish the analyzing process.
             self.finish_analyzing()
@@ -188,7 +203,11 @@ class BooleanQueryFrame(Frame):
 
         for i in range(0, min(len(results), top_x)):
             paper = results[i]
+            crawled_data = ""
+            if gui.boolean_query_space.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(paper.stored_title, indent=False)
             print(paper.id, "\t", paper.stored_title)
+            print(crawled_data, "\n")
 
 
 # The part of the GUI which handles vector space query settings and functions.
@@ -243,6 +262,11 @@ class VectorSpaceQueryFrame(Frame):
         self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers based on title")
         self.find_comparable_papers.state(['!alternate'])
         self.find_comparable_papers.grid(row=1, column=5, sticky=E, padx=(0, 10))
+
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=2, column=5, sticky=W, padx=(0, 0))
 
     # Start analyzing the query and find results.
     def start_analyzing(self):
@@ -319,8 +343,12 @@ class VectorSpaceQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, score = scores[i]
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t",
-                  database.paper_id_to_paper[paper_id].stored_title)
+            title = database.paper_id_to_paper[paper_id].stored_title
+            crawled_data = ""
+            if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(title, indent=True)
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
+            print(crawled_data, "\n")
 
 
 # A helper class to make combo boxes a bit more organized.
@@ -449,6 +477,11 @@ class ProbabilisticQueryFrame(Frame):
         self.result_count_label.grid(row=0, column=5, sticky=E)
         self.result_count_field.grid(row=0, column=6, sticky=E, padx=10)
 
+        self.show_crawled_data = ttk.Checkbutton(self, text="Show crawled data")
+        self.show_crawled_data.state(['!alternate'])
+        self.show_crawled_data.state(['selected'])
+        self.show_crawled_data.grid(row=3, column=1, sticky=W, padx=(0, 0))
+
         self.probability_searcher = ProbabilisticAnalysis()
 
     # Start analyzing the query and find results.
@@ -528,8 +561,151 @@ class ProbabilisticQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, probability = scores[i]
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",
-                  database.paper_id_to_paper[paper_id].stored_title)
+            title = database.paper_id_to_paper[paper_id].stored_title
+            crawled_data = ""
+            if gui.probabilistic_query_frame.show_crawled_data.instate(['selected']):
+                crawled_data = get_info(title, indent=True)
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t", title)
+            print(crawled_data, "\n")
+
+
+# The part of the GUI which handles clustering settings and functions.
+class KMeansClusteringFrame(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(5, weight=1)
+        self.pack(fill=X, expand=0, padx=10, pady=10)
+
+        # Start by making a bar at the top containing button to start clustering the data
+        self.cluster_button = ttk.Button(self, text="Cluster", command=lambda: self.start_analyzing(),
+                                         width=20, state="disabled")
+
+        self.cluster_button.grid(row=1, column=6, sticky=E)
+
+        # Advanced options for the querying.
+        self.options_frame = Frame(self)
+        self.options_frame.grid_columnconfigure(5, weight=1)
+        self.options_frame.grid(row=1, column=1, columnspan=5, sticky=W + E, pady=(3, 0))
+
+        self.weight_function = CompoundComboBox(self.options_frame,
+                                                [scoring_mode for scoring_mode in KMclus.scoring_measures],
+                                                "Weight Function: ")
+        self.weight_function.grid(row=1, column=1, sticky=W, padx=(10, 0))
+
+        self.stemmer = CompoundComboBox(self.options_frame,
+                                        [stemmer for stemmer in KMclus.stemmer],
+                                        "Stemmer: ")
+        self.stemmer.grid(row=1, column=2, sticky=W)
+
+        self.clusters_label = ttk.Label(self, text="Number of Clusters: ")
+        self.clusters = ttk.Entry(self)
+
+        self.clusters_label.grid(row=2, column=1, sticky=W)
+        self.clusters.grid(row=2, column=2, sticky=W)
+
+        self.runs_label = ttk.Label(self, text="Number of Runs: ")
+        self.runs = ttk.Entry(self)
+
+        self.runs_label.grid(row=2, column=3, sticky=W)
+        self.runs.grid(row=2, column=4, sticky=W)
+
+        # TODO: First get DBSCAN working
+        # TODO: Secondly, add more options for both such as a choice for silhouette score and amount of
+
+    # Start analyzing the query and find results.
+    def start_analyzing(self):
+        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
+        disable_search_buttons()
+
+        # Get the user input on the values to use
+        weight_function = self.weight_function.get()
+        stemmer = self.stemmer.get()
+        # Check that all values are filled in
+        if self.clusters.get() != '':
+            if int(self.clusters.get()) > 0:
+                clusters = int(self.clusters.get())
+            else:
+                print("Please fill in a value greater than 0 for clusters")
+                enable_search_buttons()
+                return
+        else:
+            print("Please fill in a value greater than 0 for clusters")
+            enable_search_buttons()
+            return
+        if self.runs.get() != '':
+            if int(self.runs.get()) > 0:
+                runs = int(self.runs.get())
+            else:
+                print("Please fill in a value greater than 0 for runs")
+                enable_search_buttons()
+                return
+        else:
+            print("Please fill in a value greater than 0 for runs")
+            enable_search_buttons()
+            return
+
+        # Change the status.
+        update_status("Clustering... This may take a while.")
+        print("=== CLUSTERING ===")
+        print("Starting k-Means clustering with the following settings: ")
+        print("- Weight function:", weight_function)
+        print("- Stemmer:", stemmer)
+        print("- Clusters:", clusters)
+        print("- Runs:", runs)
+        print()
+
+        # Initialize the analyzer.
+        def runner():
+            # Calculate the scores.
+            try:
+                X, model = KMclus.clusterKMeans(stemmer, weight_function, clusters, runs)
+
+                # When finished, pop up a plot frame.
+                t = PlotFrame(gui, X, model, "KM", 0)
+                t.wm_title("Window")
+
+            except vsa.EmptyQueryException:  # TODO: What to do here
+                print("Query is empty after normalization, please change the query.")
+
+            # Finish the analyzing process.
+            self.finish_analyzing()
+
+        t = threading.Thread(target=runner)
+        t.start()
+
+    # Finish analyzing and report the results.
+    @staticmethod
+    def finish_analyzing():
+        # Enable the index and search buttons.
+        enable_search_buttons()
+
+        # Change the status.
+        update_status("Finished clustering")
+        print()
+
+
+class PlotFrame(Toplevel):
+    def __init__(self, master, X, model, algorithm, n_clusters):
+        super().__init__(master)
+
+        # Draw the data we want!
+        if algorithm == "KM":
+            self.plot = KMclus.clutersgraph(X, model)
+        else:
+            self.plot = DBclus.clustergraph(X, model, n_clusters)
+
+        # Instantiate canvas
+        self.canvas = canvas = FigureCanvasTkAgg(self.plot, self)
+
+        # Pack canvas into root window
+        canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+
+        # Instantiate and pack toolbar
+        self.toolbar = toolbar = NavigationToolbar2TkAgg(canvas, self)
+
+        # Show canvas and toolbar
+        toolbar.update()
+        canvas.show()
 
 
 # The part of the GUI which handles classification.
@@ -635,6 +811,9 @@ class InterfaceRoot(Frame):
         self.probabilistic_query_frame = ProbabilisticQueryFrame(self)
         self.notebook.add(self.probabilistic_query_frame, text="Probabilistic queries")
 
+        self.kmeansclustering_frame = KMeansClusteringFrame(self)
+        self.notebook.add(self.kmeansclustering_frame, text="KMeansClustering")
+
         self.classification_frame = ClassificationFrame(self)
         self.notebook.add(self.classification_frame, text="Classification")
 
@@ -652,6 +831,7 @@ def enable_search_buttons():
     gui.vector_space_query_frame.query_button.config(state="normal")
     gui.boolean_query_space.query_button.config(state="normal")
     gui.probabilistic_query_frame.query_button.config(state="normal")
+    gui.kmeansclustering_frame.cluster_button.config(state="normal")
 
 
 def disable_search_buttons():
@@ -660,6 +840,7 @@ def disable_search_buttons():
     gui.vector_space_query_frame.query_button.config(state="disabled")
     gui.boolean_query_space.query_button.config(state="disabled")
     gui.probabilistic_query_frame.query_button.config(state="disabled")
+    gui.kmeansclustering_frame.cluster_button.config(state="disabled")
 
 
 if __name__ == '__main__':
