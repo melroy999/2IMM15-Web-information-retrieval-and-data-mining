@@ -78,43 +78,7 @@ class IndexFrame(Frame):
     def finish_indexing():
         # Enable the index and search buttons.
         enable_search_buttons()
-
-
-class ClassificationFrame(Frame):
-    def __init__(self, master):
-        super().__init__(master)
-        self.grid_columnconfigure(2, weight=1)
-        self.pack(fill=X, expand=0, padx=10, pady=10)
-
-        # Create a button to start indexing.
-        self.classification_button = ttk.Button(self, text="Classification", command=lambda: self.start_classification(),
-                                                width=20, state="disabled")
-        self.classification_button.grid(row=0, column=3, sticky=E)
-
-    def start_classification(self):
-        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
-        disable_search_buttons()
-
-        # Change the status.
-        update_status("Classifying...")
-        print("=== CLASSIFIER ===")
-        print("Starting classification: ")
-        print()
-
-        # Initialize the classifier.
-        def runner():
-            classification.find_labels(indexer)
-            classification.fit_data(indexer)
-            classification.print_results()
-            self.finish_classifying()
-
-        t = threading.Thread(target=runner)
-        t.start()
-
-    @staticmethod
-    def finish_classifying():
-        # Enable the index and search buttons.
-        enable_search_buttons()
+        update_status("Finished indexing")
 
 
 # The part of the GUI which handles boolean query settings and functions.
@@ -566,6 +530,46 @@ class ProbabilisticQueryFrame(Frame):
             paper_id, probability = scores[i]
             print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",
                   database.paper_id_to_paper[paper_id].stored_title)
+
+
+# The part of the GUI which handles classification.
+class ClassificationFrame(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(2, weight=1)
+        self.pack(fill=X, expand=0, padx=10, pady=10)
+
+        # Create a button to start indexing.
+        self.classification_button = ttk.Button(self, text="Classification",
+                                                command=lambda: self.start_classification(),
+                                                width=20, state="disabled")
+        self.classification_button.grid(row=0, column=3, sticky=E)
+
+    def start_classification(self):
+        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
+        disable_search_buttons()
+
+        # Change the status.
+        update_status("Classifying...")
+        print("=== CLASSIFIER ===")
+        print("Starting classification: ")
+        print()
+
+        # Initialize the classifier.
+        def runner():
+            classification.find_labels(indexer)
+            classification.fit_data(indexer)
+            classification.print_results()
+            self.finish_classifying()
+
+        t = threading.Thread(target=runner)
+        t.start()
+
+    @staticmethod
+    def finish_classifying():
+        # Enable the index and search buttons.
+        enable_search_buttons()
+        update_status("Finished classifying")
 
 
 # The part of the GUI which views the results of the indexing and querying.

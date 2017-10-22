@@ -1,13 +1,10 @@
 import information_retrieval.vector_space_analysis as vsa
-from information_retrieval.indexer import Indexer
 from sklearn.svm import LinearSVC
 from sklearn.svm import SVC
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from skmultilearn.problem_transform import BinaryRelevance
-from sklearn import linear_model
 
 #Labels from https://nips.cc/Conferences/2017/CallForPapers
 label_names = ["Algorithms", "Probabilistic Methods", "Optimization", "Applications", "Reinforcement Learning and Planning", "Theory", "Neuroscience and Cognitive Science", "Deep Learning", "Data, Competitions, Implementations, and Software"]
