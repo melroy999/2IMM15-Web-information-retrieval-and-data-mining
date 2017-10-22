@@ -152,13 +152,13 @@ def similar_papers_search(query, indexer, field, scoring_measure, similarity_mea
 
 
 # Execute a vector space search.
-def search(query, indexer, field, scoring_measure=scoring_measures[0], similar_document_search=False,
+def search(query, indexer, field, scoring_measure_name=scoring_measures[0], similar_document_search=False,
            similarity_measure_name="Cosine coefficient"):
     if similar_document_search:
         # Search for similar papers. First find the target paper.
-        return similar_papers_search(query, indexer, field, scoring_measure,
+        return similar_papers_search(query, indexer, field, scoring_measure_name,
                                      similarity_measures[similarity_measure_name])
     else:
         # Search for query.
-        return query_papers_search(query, indexer, field, scoring_measure,
+        return query_papers_search(query, indexer, field, scoring_measure_name,
                                    similarity_measures[similarity_measure_name])

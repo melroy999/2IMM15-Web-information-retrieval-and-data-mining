@@ -3,6 +3,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
+import time
+
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
 from import_data import database
@@ -153,7 +155,11 @@ class BooleanQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
+                start = time.time()
                 results = ba.search(query, indexer, target_default_field)
+
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
 
                 # Print the results.
                 self.print_results(query, results, result_count)
@@ -279,8 +285,12 @@ class VectorSpaceQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
+                start = time.time()
                 scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents,
                                     similarity_measure)
+
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
 
                 if scores is not None:
                     # Print the scores.
@@ -482,10 +492,14 @@ class ProbabilisticQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
+                start = time.time()
                 # Here we should use the instance we created earlier.
                 scores = self.probability_searcher.search(query, indexer, target_field, search_mode_name,
                                                           document_probability_mode_name, okapi_idf_mode_name,
                                                           remove_duplicates, _lambda, k_1, b, delta, epsilon)
+
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
 
                 if scores is not None:
                     # Print the scores.
@@ -520,7 +534,7 @@ class ProbabilisticQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, probability = scores[i]
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % probability, "\t",
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",
                   database.paper_id_to_paper[paper_id].stored_title)
 
 

@@ -101,7 +101,8 @@ class Node:
         return result
 
 
-non_normalize_terms = {"(", ")", "and", "or", "not", "in", "=", ">", "<", ">=", "<="}
+non_normalize_terms = {"(", ")", "and", "or", "not", "in", "=", ">", "<", ">=", "<=", "title", "abstract", "year",
+                       "paper_text, paper_id"}
 comparison_table = {
     "=": lambda x, y: x == y,
     ">": lambda x, y: x > y,
@@ -138,6 +139,9 @@ def create_parse_tree(query, indexer):
         if comparison in spaced_query:
             spaced_query = spaced_query.replace(comparison, " " + comparison + " ")
             break
+
+    # We want to restore the paper_text and paper_id.
+    spaced_query = spaced_query.replace("paper text", "paper_text").replace("paper id", "paper_id")
 
     # Now we can split.
     query_tokens = spaced_query.split()
