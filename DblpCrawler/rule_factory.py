@@ -53,7 +53,8 @@ class RuleFactory:
         'author_iterator': common_rules['author_iterator'],
         'author': common_rules['author'],
         'publication_year': './div/a/span[contains(@itemprop, "datePublished")]/text()',
-        'publication': common_rules['publication']
+        'publication': common_rules['publication'],
+        'doc_url': common_rules['doc_url']
 
     }
 
