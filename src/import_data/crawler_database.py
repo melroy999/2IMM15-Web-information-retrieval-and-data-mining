@@ -14,7 +14,8 @@ def get_info(title):
         # Get any information we have in the crawled data.
         # Uses the LIKE operator since there may be small differences. For example, the title in
         # DBLP often has punctuation at the end, while the stored titles do not.
-        res = c.execute("""SELECT * FROM DATA WHERE title like "{}%" """.format(title)).fetchone()
+        q_title = title + "%"
+        res = c.execute("""SELECT * FROM DATA WHERE title like ? """, (q_title,)).fetchone()
 
         # Exclude these columns since they are not relevant/interesting for the query
         exclude = ["title", "entry_type"]
