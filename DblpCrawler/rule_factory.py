@@ -45,6 +45,15 @@ class RuleFactory:
     }
 
     reference_works_rules = {
+        'title': common_rules['title']
+    }
+
+    conference_rules = {
+        'title': common_rules['title'],
+        'author_iterator': common_rules['author_iterator'],
+        'author': common_rules['author'],
+        'publication_year': './div/a/span[contains(@itemprop, "datePublished")]/text()',
+        'publication': common_rules['publication']
 
     }
 
@@ -58,7 +67,7 @@ class RuleFactory:
     }
 
     def get_rule_list(self, entry_type):
-        if entry_type == 'entry book':
+        if entry_type == "entry book":
             return {**self.all_rules, **self.book_rules}
         elif entry_type == "entry reference":
             return {**self.all_rules, **self.reference_works_rules}
@@ -66,6 +75,8 @@ class RuleFactory:
             return{**self.all_rules, **self.journal_rules}
         elif entry_type == "entry incollection":
             return {**self.all_rules, **self.collection_rules}
+        elif entry_type == "entry inproceedings":
+            return {**self.all_rules, **self.conference_rules}
         else:
             # Bare minimum, if the entry is not any of the above, take only the title
             return {**self.all_rules, **{'title': self.common_rules['title']}}

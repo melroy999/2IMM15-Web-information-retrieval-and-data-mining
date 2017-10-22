@@ -7,11 +7,12 @@ import re
 class DblpCrawler(scrapy.Spider):
 
     name = 'dblpcrawler'
-    max_iterations = 10000
+    max_iterations = 20
     iteration = 0
 
     def start_requests(self):
-        urls = ["http://dblp.uni-trier.de/search/publ/inc?q=machine%20learning&h=30&f=0&s=yvpc"]
+        urls = ["http://dblp.uni-trier.de/search/publ/inc?q=machine%20learning&h=30&f=0&s=yvpc",
+                "http://dblp.uni-trier.de/search/publ/inc?q=NIPS&h=30&f=0&s=yvpc"]
 
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)

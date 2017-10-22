@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-
-# Define your item pipelines here
-#
-# Don't forget to add your pipeline to the ITEM_PIPELINES setting
-# See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
-
 import sqlite3
 import os
 
@@ -25,6 +18,7 @@ class DblpcrawlerPipeline(object):
         for key in item.keys():
             if key in item:
                 self.f.write("{}: {} \n".format(key, item[key]))
+
         self.f.write("\n")
         return item
 
