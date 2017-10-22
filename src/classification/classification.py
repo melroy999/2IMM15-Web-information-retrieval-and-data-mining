@@ -5,6 +5,9 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+from information_retrieval.indexer import Indexer
+from sklearn.model_selection import train_test_split
 
 #Labels from https://nips.cc/Conferences/2017/CallForPapers
 label_names = ["Algorithms", "Probabilistic Methods", "Optimization", "Applications", "Reinforcement Learning and Planning", "Theory", "Neuroscience and Cognitive Science", "Deep Learning", "Data, Competitions, Implementations, and Software"]
@@ -23,10 +26,6 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #        print(feature)
 
 result_count = 8
-
-#indexer = Indexer(None)
-#indexer.index_corpus("None", False)
-
 
 def search_vector_query(query, indexer):
     target_field = "paper_text"
@@ -68,10 +67,8 @@ def find_labels(indexer):
        #         real_labels.append(number)
 
 
-
 array_labels = []
 add_labels = []
-
 
 # Jeanpierre
 
@@ -102,7 +99,7 @@ def fit_data(indexer):
 
 
     #There should be an equal amount of data elements as ground_truth elements
-    print(len(data), "should be equal to", len(ground_truth))
+    print(len(data), " should be equal to ", len(ground_truth))
 
 #print(results.get("memory"))
 #sorted_results = sorted(results.items(), key=operator.itemgetter(1))
@@ -116,44 +113,44 @@ def fit_data(indexer):
 
 
 def print_results():
+    X_train, X_test, y_train, y_test = train_test_split(data, ground_truth, test_size=.25, random_state=42, shuffle=True)
+
     classifier = LinearSVC(random_state=42)
-    classifier.fit(data, ground_truth)
     LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
          intercept_scaling=1, loss='squared_hinge', max_iter=1000,
          multi_class='ovr', penalty='l2', random_state=0, tol=0.0001,
          verbose=0)
-    print("Number of predictions: ", len(classifier.predict(data)))
-    print()
     print("LinearSVC:")
-    print(classifier.predict(data))
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
     classifier = OneVsRestClassifier(SVC(kernel='linear'))
-    classifier.fit(data, ground_truth)
     print("OneVsRestClassifier:")
-    print(classifier.predict(data))
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
-    classifier = BernoulliNB()
-    classifier.fit(data, ground_truth)
-    BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
+    classifier = BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
     print("BernoulliNB:")
-    print(classifier.predict(data))
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
     classifier = DecisionTreeClassifier(random_state=0)
-    classifier.fit(data, ground_truth)
     print("DecisionTreeClassifier:")
-    print(classifier.predict(data))
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
     classifier = KNeighborsClassifier(n_neighbors=5)
-    classifier.fit(data, ground_truth)
     print("KNeighborsClassifier:")
-    print(classifier.predict(data))
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
-#multilabel classification
-#classifier = BinaryRelevance(SVC(kernel='linear'))
-#classifier.fit(data, ground_truth)
-#print("BinaryRelevance:")
-#print(classifier.predict(data))
 
-#find_labels()
-#fit_data()
-#print_results()
+def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
+    classifier.fit(X_train, y_train)
+    pred = classifier.predict(X_test)
+    print(pred)
+    score = metrics.accuracy_score(y_test, pred)
+    print("Accuracy: ", score)
+    print()
+
+
+indexer = Indexer(None)
+indexer.index_corpus("None", False)
+find_labels(indexer)
+fit_data(indexer)
+print_results()
