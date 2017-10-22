@@ -6,6 +6,7 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from skmultilearn.problem_transform import BinaryRelevance
 from sklearn import linear_model
 
 #Labels from https://nips.cc/Conferences/2017/CallForPapers
@@ -16,13 +17,13 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #Labels as numbers:
 #Algorithms = 0
 
-print(label_names)
-i = 0
-for attr_set in label_attributes:
-    print('label = ', label_names[i])
-    i += 1
-    for feature in attr_set.split(','):
-        print(feature)
+#print(label_names)
+#i = 0
+#for attr_set in label_attributes:
+#    print('label = ', label_names[i])
+#    i += 1
+#    for feature in attr_set.split(','):
+#        print(feature)
 indexer = Indexer(None)
 target_field = "paper_text"
 result_count = 10
@@ -32,7 +33,7 @@ indexer.index_corpus("None", False)
 
 def search_vector_query(query):
     try:
-        scores = vsa.search(query, indexer, target_field, scoring_measure="tf", similar_document_search=False,
+        scores = vsa.search(query, indexer, target_field, scoring_measure_name="tf", similar_document_search=False,
            similarity_measure_name="Cosine coefficient")
 
         if scores is not None:
@@ -44,6 +45,7 @@ def search_vector_query(query):
 
 
 def find_labels():
+    print("finding labels")
     for attr_set in label_attributes:
         one_label = []
         for feature in attr_set.split(','):
@@ -80,6 +82,7 @@ data = []
 ground_truth = []
 
 # For each label
+print("fitting training data")
 for i in range(0, 9):
     for paper in array_labels[i]:
         results = indexer.results["papers"]["paper_text"][paper]["tf"]
@@ -96,8 +99,7 @@ for i in range(0, 9):
         #print(temp)
 
 #There should be an equal amount of data elements as ground_truth elements
-print(len(data))
-print(len(ground_truth))
+print(len(data), "should be equal to", len(ground_truth))
 
 #print(results.get("memory"))
 #sorted_results = sorted(results.items(), key=operator.itemgetter(1))
@@ -109,7 +111,7 @@ print(len(ground_truth))
 #      [4, 4, 2, 1]]
 # y = [1, 2, 3, 4]
 
-classifier = LinearSVC(random_state=0)
+classifier = LinearSVC(random_state=42)
 classifier.fit(data, ground_truth)
 LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
      intercept_scaling=1, loss='squared_hinge', max_iter=1000,
@@ -131,7 +133,6 @@ BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
 print("BernoulliNB:")
 print(classifier.predict(data))
 
-
 classifier = DecisionTreeClassifier(random_state=0)
 classifier.fit(data, ground_truth)
 print("DecisionTreeClassifier:")
@@ -142,44 +143,8 @@ classifier.fit(data, ground_truth)
 print("KNeighborsClassifier:")
 print(classifier.predict(data))
 
-#DEMO on https://www.digitalocean.com/community/tutorials/how-to-build-a-machine-learning-classifier-in-python-with-scikit-learn
-'''
-from sklearn.datasets import load_breast_cancer
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import accuracy_score
-
-# Load dataset
-data = load_breast_cancer()
-
-# Organize our data
-label_names = data['target_names']
-labels = data['target']
-feature_names = data['feature_names']
-features = data['data']
-
-# Look at our data
-print(label_names)
-print('Class label = ', labels[0])
-print(feature_names)
-print(features[0])
-
-# Split our data
-train, test, train_labels, test_labels = train_test_split(features,
-                                                          labels,
-                                                          test_size=0.33,
-                                                          random_state=42)
-
-# Initialize our classifier
-gnb = GaussianNB()
-
-# Train our classifier
-model = gnb.fit(train, train_labels)
-
-# Make predictions
-preds = gnb.predict(test)
-print(preds)
-
-# Evaluate accuracy
-print(accuracy_score(test_labels, preds))
-'''
+#multilabel classification
+#classifier = BinaryRelevance(SVC(kernel='linear'))
+#classifier.fit(data, ground_truth)
+#print("BinaryRelevance:")
+#print(classifier.predict(data))
