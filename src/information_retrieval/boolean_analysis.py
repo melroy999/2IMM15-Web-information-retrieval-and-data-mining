@@ -1,5 +1,7 @@
-from information_retrieval.indexer import Indexer
+import string
+
 from import_data import database
+from cleanup_module import cleanup as _cleanup
 
 
 class Stack:
@@ -99,30 +101,55 @@ class Node:
         return result
 
 
-non_normalize_terms = {"(", ")", "and", "or", "not", "in", "=", ">", "<", ">=", "<="}
+non_normalize_terms = {"(", ")", "and", "or", "not", "in", "=", ">", "<", ">=", "<=", "title", "abstract", "year",
+                       "paper_text, paper_id"}
 comparison_table = {
     "=": lambda x, y: x == y,
-    ">": lambda x, y: x >= y,
-    "<": lambda x, y: x <= y,
+    ">": lambda x, y: x > y,
+    "<": lambda x, y: x < y,
     ">=": lambda x, y: x >= y,
     "<=": lambda x, y: x <= y
 }
 compound_leaf_nodes = {"in", "=", ">", "<", ">=", "<="}
 
 
+# Remove all punctuation, except for the brackets, periods and comparisons.
+custom_punctuation_rule = \
+    str.maketrans({key: " " for key in string.punctuation.replace("(", "").replace(")", "").replace(".", "")
+                  .replace("=", "").replace(">", "").replace("<", "")})
+
+
 def create_parse_tree(query, indexer):
     print("Query:", query)
 
-    # Break the query into the components. Do not use punctuation removal here.
-    lower_case_query = query.lower()
+    # Get a cleanup instance.
+    cleanup = _cleanup.get_cleanup_instance()
+
+    # Break the query into the components. We need to remove all punctuation except for brackets and periods.
+    lower_case_query = cleanup.remove_punctuation(query.lower(), translator=custom_punctuation_rule)
+
+    # Dots should be removed completely.
+    lower_case_query = lower_case_query.replace(".", "")
 
     # We have to keep in mind that the query might contain brackets without accompanying spaces.
     spaced_query = lower_case_query.replace("(", " ( ").replace(")", " ) ")
+
+    # Next to that, the comparisons may also miss spacing.
+    for comparison in sorted(comparison_table.keys(), key=len, reverse=True):
+        if comparison in spaced_query:
+            spaced_query = spaced_query.replace(comparison, " " + comparison + " ")
+            break
+
+    # We want to restore the paper_text and paper_id.
+    spaced_query = spaced_query.replace("paper text", "paper_text").replace("paper id", "paper_id")
+
+    # Now we can split.
     query_tokens = spaced_query.split()
 
     # We still have to normalize the terms in the query.
     for i, term in enumerate(query_tokens):
         if query_tokens[i] not in non_normalize_terms:
+            # Normalize the term.
             query_tokens[i] = indexer.normalizer.normalize(term)
 
     # Convert all the tokens to nodes, to be consistent.
@@ -157,7 +184,8 @@ def create_parse_subtree(token_nodes):
 
     # We should only have one node in the stack now. Throw an exception if we have not.
     if processed_nodes_stack.size() != 1:
-        raise Exception("We should not have ended up with multiple root nodes in the parsed subtree!")
+        raise Exception("We should not have ended up with multiple root nodes in the parsed subtree! \n"
+                        "This is likely caused by an invalid query.")
 
     # Return the top node.
     return processed_nodes_stack.pop()

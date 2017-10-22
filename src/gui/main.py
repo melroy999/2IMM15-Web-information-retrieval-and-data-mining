@@ -7,7 +7,6 @@ import time
 
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
-from gui.util import create_tool_tip
 from import_data import database
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
@@ -147,10 +146,18 @@ class BooleanQueryFrame(Frame):
         def runner():
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
-            results = ba.search(query, indexer, target_default_field)
+            try:
+                start = time.time()
+                results = ba.search(query, indexer, target_default_field)
 
-            # Print the results.
-            self.print_results(query, results, result_count)
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
+
+                # Print the results.
+                self.print_results(query, results, result_count)
+            except Exception:
+                print("Received an invalid query. Keep in mind that the boolean analysis only supports single word "
+                      "queries (words containing a hyphen are considered multiple words).")
 
             # Finish the analyzing process.
             self.finish_analyzing()
@@ -231,10 +238,9 @@ class VectorSpaceQueryFrame(Frame):
         self.result_count_label.grid(row=1, column=4, sticky=W)
         self.result_count_field.grid(row=1, column=5, sticky=W, padx=10)
 
-        self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers")
+        self.find_comparable_papers = ttk.Checkbutton(self.options_frame, text="Find similar papers based on title")
         self.find_comparable_papers.state(['!alternate'])
         self.find_comparable_papers.grid(row=1, column=5, sticky=E, padx=(0, 10))
-        create_tool_tip(self.find_comparable_papers, "Enter the paper's title to find similar papers.")
 
     # Start analyzing the query and find results.
     def start_analyzing(self):
@@ -271,8 +277,12 @@ class VectorSpaceQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
+                start = time.time()
                 scores = vsa.search(query, indexer, target_field, query_score_mode, find_similar_documents,
                                     similarity_measure)
+
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
 
                 if scores is not None:
                     # Print the scores.
@@ -404,7 +414,7 @@ class ProbabilisticQueryFrame(Frame):
 
         self.remove_duplicate_terms = ttk.Checkbutton(self.options_frame, text="Remove duplicate terms in query")
         self.remove_duplicate_terms.state(['!alternate'])
-        self.remove_duplicate_terms.grid(row=1, column=5, sticky=W, padx=10)
+        self.remove_duplicate_terms.grid(row=1, column=5, sticky=E, padx=10)
 
         # Create a new frame for better looks.
         self.slider_frame = Frame(self)
@@ -474,10 +484,14 @@ class ProbabilisticQueryFrame(Frame):
             # Calculate the scores.
             # query, indexer, field, scoring_measure="tf", similar_document_search=False
             try:
+                start = time.time()
                 # Here we should use the instance we created earlier.
                 scores = self.probability_searcher.search(query, indexer, target_field, search_mode_name,
                                                           document_probability_mode_name, okapi_idf_mode_name,
                                                           remove_duplicates, _lambda, k_1, b, delta, epsilon)
+
+                # The time at which we are done.
+                print("Running time:", time.time() - start)
 
                 if scores is not None:
                     # Print the scores.
@@ -512,7 +526,7 @@ class ProbabilisticQueryFrame(Frame):
 
         for i in range(0, min(len(scores), top_x)):
             paper_id, probability = scores[i]
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % probability, "\t",
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",
                   database.paper_id_to_paper[paper_id].stored_title)
 
 
@@ -604,7 +618,7 @@ def disable_search_buttons():
 if __name__ == '__main__':
     root = Tk()
     root.title("[2IMM15] - Information retrieval module")
-    root.minsize(width=1200, height=800)
+    root.minsize(width=1500, height=800)
 
     gui = InterfaceRoot(root)
 
