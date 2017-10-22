@@ -196,8 +196,9 @@ class BooleanQueryFrame(Frame):
             paper = results[i]
             crawled_data = ""
             if gui.boolean_query_space.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(paper.stored_title)
-            print(paper.id, "\t", paper.stored_title, "\t", crawled_data)
+                crawled_data = get_info(paper.stored_title, indent=False)
+            print(paper.id, "\t", paper.stored_title)
+            print(crawled_data, "\n")
 
 
 # The part of the GUI which handles vector space query settings and functions.
@@ -336,9 +337,9 @@ class VectorSpaceQueryFrame(Frame):
             title =  database.paper_id_to_paper[paper_id].stored_title
             crawled_data = ""
             if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(title)
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t",
-                  title, "\t", crawled_data)
+                crawled_data = get_info(title, indent=True)
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
+            print(crawled_data, "\n")
 
 
 # A helper class to make combo boxes a bit more organized.
@@ -554,8 +555,9 @@ class ProbabilisticQueryFrame(Frame):
             title = database.paper_id_to_paper[paper_id].stored_title
             crawled_data = ""
             if gui.probabilistic_query_frame.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(title)
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",title, "\t", crawled_data)
+                crawled_data = get_info(title, indent=True)
+            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t",title)
+            print(crawled_data, "\n")
 
 
 # The part of the GUI which views the results of the indexing and querying.
