@@ -8,6 +8,7 @@ import time
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
 from import_data import database
+from classification import classification
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
 
@@ -75,6 +76,43 @@ class IndexFrame(Frame):
 
     @staticmethod
     def finish_indexing():
+        # Enable the index and search buttons.
+        enable_search_buttons()
+
+
+class ClassificationFrame(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(2, weight=1)
+        self.pack(fill=X, expand=0, padx=10, pady=10)
+
+        # Create a button to start indexing.
+        self.classification_button = ttk.Button(self, text="Classification", command=lambda: self.start_classification(),
+                                                width=20, state="disabled")
+        self.classification_button.grid(row=0, column=3, sticky=E)
+
+    def start_classification(self):
+        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
+        disable_search_buttons()
+
+        # Change the status.
+        update_status("Classifying...")
+        print("=== CLASSIFIER ===")
+        print("Starting classification: ")
+        print()
+
+        # Initialize the classifier.
+        def runner():
+            classification.find_labels(indexer)
+            classification.fit_data(indexer)
+            classification.print_results()
+            self.finish_classifying()
+
+        t = threading.Thread(target=runner)
+        t.start()
+
+    @staticmethod
+    def finish_classifying():
         # Enable the index and search buttons.
         enable_search_buttons()
 
@@ -593,6 +631,9 @@ class InterfaceRoot(Frame):
         self.probabilistic_query_frame = ProbabilisticQueryFrame(self)
         self.notebook.add(self.probabilistic_query_frame, text="Probabilistic queries")
 
+        self.classification_frame = ClassificationFrame(self)
+        self.notebook.add(self.classification_frame, text="Classification")
+
         self.result_frame = ResultFrame(self)
         self.status_frame = StatusFrame(self)
 
@@ -603,6 +644,7 @@ def update_status(status):
 
 def enable_search_buttons():
     gui.index_frame.indexing_button.config(state="normal")
+    gui.classification_frame.classification_button.config(state="normal")
     gui.vector_space_query_frame.query_button.config(state="normal")
     gui.boolean_query_space.query_button.config(state="normal")
     gui.probabilistic_query_frame.query_button.config(state="normal")
@@ -610,6 +652,7 @@ def enable_search_buttons():
 
 def disable_search_buttons():
     gui.index_frame.indexing_button.config(state="disabled")
+    gui.classification_frame.classification_button.config(state="disabled")
     gui.vector_space_query_frame.query_button.config(state="disabled")
     gui.boolean_query_space.query_button.config(state="disabled")
     gui.probabilistic_query_frame.query_button.config(state="disabled")

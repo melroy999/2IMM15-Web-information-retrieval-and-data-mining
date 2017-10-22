@@ -24,14 +24,16 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #    i += 1
 #    for feature in attr_set.split(','):
 #        print(feature)
-indexer = Indexer(None)
-target_field = "paper_text"
-result_count = 10
+
+result_count = 8
+
+#indexer = Indexer(None)
+#indexer.index_corpus("None", False)
 
 
-indexer.index_corpus("None", False)
+def search_vector_query(query, indexer):
+    target_field = "paper_text"
 
-def search_vector_query(query):
     try:
         scores = vsa.search(query, indexer, target_field, scoring_measure_name="tf", similar_document_search=False,
            similarity_measure_name="Cosine coefficient")
@@ -44,13 +46,13 @@ def search_vector_query(query):
         print("Query is empty after normalization, please change the query.")
 
 
-def find_labels():
-    print("finding labels")
+def find_labels(indexer):
+    print("This will take about 30 seconds")
     for attr_set in label_attributes:
         one_label = []
         for feature in attr_set.split(','):
             one_feature = []
-            _, id, _ = search_vector_query(feature)
+            _, id, _ = search_vector_query(feature, indexer)
             for x in range(0, result_count-1):
                 if (id[x][1] > 0.1):
                     #print(id[x][0])
@@ -68,10 +70,11 @@ def find_labels():
       #      for number in add_labels[y][j]:
        #         real_labels.append(number)
 
+
+
 array_labels = []
 add_labels = []
 
-find_labels()
 
 # Jeanpierre
 
@@ -81,25 +84,28 @@ data = []
 # This is the ground truth for each paper
 ground_truth = []
 
-# For each label
-print("fitting training data")
-for i in range(0, 9):
-    for paper in array_labels[i]:
-        results = indexer.results["papers"]["paper_text"][paper]["tf"]
 
-        #Create a attribute array with tf for one paper
-        temp = []
-        for var in label_attributes_cleaned:
-            if results.get(var) == None:
-                temp.append(0)
-            else:
-                temp.append(results.get(var))
-        data.append(temp)
-        ground_truth.append(i)
-        #print(temp)
+def fit_data(indexer):
+    # For each label
+    print("fitting training data")
+    for i in range(0, 9):
+        for paper in array_labels[i]:
+            results = indexer.results["papers"]["paper_text"][paper]["tf"]
 
-#There should be an equal amount of data elements as ground_truth elements
-print(len(data), "should be equal to", len(ground_truth))
+            #Create a attribute array with tf for one paper
+            temp = []
+            for var in label_attributes_cleaned:
+                if results.get(var) == None:
+                    temp.append(0)
+                else:
+                    temp.append(results.get(var))
+            data.append(temp)
+            ground_truth.append(i)
+            #print(temp)
+
+
+    #There should be an equal amount of data elements as ground_truth elements
+    print(len(data), "should be equal to", len(ground_truth))
 
 #print(results.get("memory"))
 #sorted_results = sorted(results.items(), key=operator.itemgetter(1))
@@ -111,40 +117,46 @@ print(len(data), "should be equal to", len(ground_truth))
 #      [4, 4, 2, 1]]
 # y = [1, 2, 3, 4]
 
-classifier = LinearSVC(random_state=42)
-classifier.fit(data, ground_truth)
-LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
-     intercept_scaling=1, loss='squared_hinge', max_iter=1000,
-     multi_class='ovr', penalty='l2', random_state=0, tol=0.0001,
-     verbose=0)
-print("Number of predictions: ", len(classifier.predict(data)))
-print()
-print("LinearSVC:")
-print(classifier.predict(data))
 
-classifier = OneVsRestClassifier(SVC(kernel='linear'))
-classifier.fit(data, ground_truth)
-print("OneVsRestClassifier:")
-print(classifier.predict(data))
+def print_results():
+    classifier = LinearSVC(random_state=42)
+    classifier.fit(data, ground_truth)
+    LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
+         intercept_scaling=1, loss='squared_hinge', max_iter=1000,
+         multi_class='ovr', penalty='l2', random_state=0, tol=0.0001,
+         verbose=0)
+    print("Number of predictions: ", len(classifier.predict(data)))
+    print()
+    print("LinearSVC:")
+    print(classifier.predict(data))
 
-classifier = BernoulliNB()
-classifier.fit(data, ground_truth)
-BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
-print("BernoulliNB:")
-print(classifier.predict(data))
+    classifier = OneVsRestClassifier(SVC(kernel='linear'))
+    classifier.fit(data, ground_truth)
+    print("OneVsRestClassifier:")
+    print(classifier.predict(data))
 
-classifier = DecisionTreeClassifier(random_state=0)
-classifier.fit(data, ground_truth)
-print("DecisionTreeClassifier:")
-print(classifier.predict(data))
+    classifier = BernoulliNB()
+    classifier.fit(data, ground_truth)
+    BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
+    print("BernoulliNB:")
+    print(classifier.predict(data))
 
-classifier = KNeighborsClassifier(n_neighbors=5)
-classifier.fit(data, ground_truth)
-print("KNeighborsClassifier:")
-print(classifier.predict(data))
+    classifier = DecisionTreeClassifier(random_state=0)
+    classifier.fit(data, ground_truth)
+    print("DecisionTreeClassifier:")
+    print(classifier.predict(data))
+
+    classifier = KNeighborsClassifier(n_neighbors=5)
+    classifier.fit(data, ground_truth)
+    print("KNeighborsClassifier:")
+    print(classifier.predict(data))
 
 #multilabel classification
 #classifier = BinaryRelevance(SVC(kernel='linear'))
 #classifier.fit(data, ground_truth)
 #print("BinaryRelevance:")
 #print(classifier.predict(data))
+
+#find_labels()
+#fit_data()
+#print_results()

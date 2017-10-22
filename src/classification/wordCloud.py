@@ -14,7 +14,7 @@ print("The results: ", results)
 
 data = []
 for var in label_attributes_cleaned:
-    if results.get(var) == None:
+    if results.get(var) is None:
         data.append(0)
     else:
         data.append(results.get(var))
