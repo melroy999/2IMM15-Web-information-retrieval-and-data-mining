@@ -584,14 +584,14 @@ class KMeansClusteringFrame(Frame):
         # Check that all values are filled in
         try:
             if self.clusters.get() != '':
-                if int(self.clusters.get()) > 0:
+                if int(self.clusters.get()) > 1:
                     clusters = int(self.clusters.get())
                 else:
-                    print("Please fill in a value greater than 0 for clusters.", end="\n\n")
+                    print("Please fill in a value greater than 1 for clusters.", end="\n\n")
                     enable_search_buttons()
                     return
             else:
-                print("Please fill in a value greater than 0 for clusters.", end="\n\n")
+                print("Please fill in a value greater than 1 for clusters.", end="\n\n")
                 enable_search_buttons()
                 return
         except ValueError:
