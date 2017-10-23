@@ -27,7 +27,7 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #    for feature in attr_set.split(','):
 #        print(feature)
 
-result_count = 10
+result_count = 8
 indexer = None
 already_indexed = False
 already_trained = False
