@@ -3,7 +3,8 @@ import re
 
 _crawler_data = '../../data/crawler_sqlite.db'
 
-def get_info(title, indent):
+
+def get_info(title, indent_offset):
     # Persistent connection would probably be more efficient, but this seems to work well enough.
     with sqlite3.connect(_crawler_data) as conn:
 
@@ -21,18 +22,11 @@ def get_info(title, indent):
         exclude = ["title", "entry_type"]
         if res is not None:
             res_string = ""
-            if indent:
-                res_string = res_string + "\t"
             for key in res.keys():
                 if res[key] != "none" and key not in exclude:
-                    if indent:
-                        res_string = res_string + "\t"
-                    res_string = res_string + "{}: {} \n".format(key, res[key])
+                    res_string += " " * indent_offset + "{}: {} \n".format(key, res[key])
+
             # Remove the ugly brackets around the authors
             return re.sub("\[|\]", "", res_string)
         else:
-            res_string = ""
-            if indent:
-                res_string = res_string + "\t"
-            res_string = res_string + "Paper not in crawled Data"
-            return res_string
+            return " " * indent_offset + "Paper not in crawled Data \n"

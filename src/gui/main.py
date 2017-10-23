@@ -1,4 +1,5 @@
 import threading
+import traceback
 from tkinter import *
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -8,6 +9,7 @@ import time
 import information_retrieval.boolean_analysis as ba
 import information_retrieval.vector_space_analysis as vsa
 from import_data import database
+from classification import classification
 from information_retrieval.indexer import paper_fields, Indexer
 from information_retrieval.normalizer import name_to_normalizer
 
@@ -86,6 +88,7 @@ class IndexFrame(Frame):
     def finish_indexing():
         # Enable the index and search buttons.
         enable_search_buttons()
+        update_status("Finished indexing")
 
 
 # The part of the GUI which handles boolean query settings and functions.
@@ -168,11 +171,13 @@ class BooleanQueryFrame(Frame):
                 print("Running time:", time.time() - start)
 
                 # Print the results.
-                self.print_results(query, results, result_count)
+                use_crawler = self.show_crawled_data.instate(['selected'])
+                print_results(query, results, use_crawler, has_score=False, top_x=result_count)
             except Exception as e:
                 print("Received an invalid query. Keep in mind that the boolean analysis only supports single word "
                       "queries (words containing a hyphen are considered multiple words).")
                 print(e)
+                traceback.print_tb(e.__traceback__)
 
             # Finish the analyzing process.
             self.finish_analyzing()
@@ -189,23 +194,6 @@ class BooleanQueryFrame(Frame):
         # Change the status.
         update_status("Finished searching")
         print()
-
-    @staticmethod
-    def print_results(query, results, top_x=10):
-        if len(results) == 0:
-            print("No results found for query \"" + query + "\"!")
-            return
-
-        print("query = \"" + query + "\"")
-        print(min(len(results), top_x), "of", len(results), "results:")
-
-        for i in range(0, min(len(results), top_x)):
-            paper = results[i]
-            crawled_data = ""
-            if gui.boolean_query_space.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(paper.stored_title, indent=False)
-            print(paper.id, "\t", paper.stored_title)
-            print(crawled_data, "\n")
 
 
 # The part of the GUI which handles vector space query settings and functions.
@@ -310,7 +298,8 @@ class VectorSpaceQueryFrame(Frame):
 
                 if scores is not None:
                     # Print the scores.
-                    self.print_results(query, scores, result_count)
+                    use_crawler = self.show_crawled_data.instate(['selected'])
+                    print_results(query, scores, use_crawler, has_score=True, top_x=result_count)
             except vsa.EmptyQueryException:
                 print("Query is empty after normalization, please change the query.")
 
@@ -330,23 +319,23 @@ class VectorSpaceQueryFrame(Frame):
         update_status("Finished searching")
         print()
 
-    @staticmethod
-    def print_results(query, scores, top_x=10):
-        if len(scores) == 0:
-            print("No results found for query \"" + query + "\"!")
-            return
-
-        print("query = \"" + query + "\"")
-        print(min(len(scores), top_x), "of", len(scores), "results:")
-
-        for i in range(0, min(len(scores), top_x)):
-            paper_id, score = scores[i]
-            title = database.paper_id_to_paper[paper_id].stored_title
-            crawled_data = ""
-            if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(title, indent=True)
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
-            print(crawled_data, "\n")
+    # @staticmethod
+    # def print_results(query, scores, top_x=10):
+    #     if len(scores) == 0:
+    #         print("No results found for query \"" + query + "\"!")
+    #         return
+    #
+    #     print("query = \"" + query + "\"")
+    #     print(min(len(scores), top_x), "of", len(scores), "results:")
+    #
+    #     for i in range(0, min(len(scores), top_x)):
+    #         paper_id, score = scores[i]
+    #         title = database.paper_id_to_paper[paper_id].stored_title
+    #         crawled_data = ""
+    #         if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
+    #             crawled_data = get_info(title, indent=True)
+    #         print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
+    #         print(crawled_data, "\n")
 
 
 # A helper class to make combo boxes a bit more organized.
@@ -528,7 +517,8 @@ class ProbabilisticQueryFrame(Frame):
 
                 if scores is not None:
                     # Print the scores.
-                    self.print_results(query, scores, result_count)
+                    use_crawler = self.show_crawled_data.instate(['selected'])
+                    print_results(query, scores, use_crawler, has_score=True, top_x=result_count, score_format="%0.8e")
             except vsa.EmptyQueryException:
                 print("Query is empty after normalization, please change the query.")
 
@@ -547,24 +537,6 @@ class ProbabilisticQueryFrame(Frame):
         # Change the status.
         update_status("Finished searching")
         print()
-
-    @staticmethod
-    def print_results(query, scores, top_x=10):
-        if len(scores) == 0:
-            print("No results found for query \"" + query + "\"!")
-            return
-
-        print("query = \"" + query + "\"")
-        print(min(len(scores), top_x), "of", len(scores), "results:")
-
-        for i in range(0, min(len(scores), top_x)):
-            paper_id, probability = scores[i]
-            title = database.paper_id_to_paper[paper_id].stored_title
-            crawled_data = ""
-            if gui.probabilistic_query_frame.show_crawled_data.instate(['selected']):
-                crawled_data = get_info(title, indent=True)
-            print(str(i + 1) + ".\t", paper_id, "\t", '%0.8e' % probability, "\t", title)
-            print(crawled_data, "\n")
 
 
 # The part of the GUI which handles clustering settings and functions.
@@ -706,6 +678,46 @@ class PlotFrame(Toplevel):
         canvas.show()
 
 
+# The part of the GUI which handles classification.
+class ClassificationFrame(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(2, weight=1)
+        self.pack(fill=X, expand=0, padx=10, pady=10)
+
+        # Create a button to start indexing.
+        self.classification_button = ttk.Button(self, text="Classification",
+                                                command=lambda: self.start_classification(),
+                                                width=20, state="disabled")
+        self.classification_button.grid(row=0, column=3, sticky=E)
+
+    def start_classification(self):
+        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
+        disable_search_buttons()
+
+        # Change the status.
+        update_status("Classifying...")
+        print("=== CLASSIFIER ===")
+        print("Starting classification: ")
+        print()
+
+        # Initialize the classifier.
+        def runner():
+            classification.find_labels(indexer)
+            classification.fit_data(indexer)
+            classification.print_results()
+            self.finish_classifying()
+
+        t = threading.Thread(target=runner)
+        t.start()
+
+    @staticmethod
+    def finish_classifying():
+        # Enable the index and search buttons.
+        enable_search_buttons()
+        update_status("Finished classifying")
+
+
 # The part of the GUI which views the results of the indexing and querying.
 class ResultFrame(Frame):
     def __init__(self, master):
@@ -772,6 +784,9 @@ class InterfaceRoot(Frame):
         self.kmeansclustering_frame = KMeansClusteringFrame(self)
         self.notebook.add(self.kmeansclustering_frame, text="KMeansClustering")
 
+        self.classification_frame = ClassificationFrame(self)
+        self.notebook.add(self.classification_frame, text="Classification")
+
         self.result_frame = ResultFrame(self)
         self.status_frame = StatusFrame(self)
 
@@ -780,8 +795,50 @@ def update_status(status):
     gui.status_frame.status_label.config(text=status)
 
 
+def print_results(query, results, use_crawler_data, has_score=True, top_x=10, score_format="%0.8f"):
+    if len(results) == 0:
+        print("No results found for query \"" + query + "\"!")
+        return
+
+    # Print general data, such as the query and number of results.
+    print("query = \"" + query + "\"")
+    print(min(len(results), top_x), "of", len(results), "results:")
+
+    # The desired column lengths and column header.
+    if has_score:
+        column_lengths = {'Rank': len(str(top_x)) + 4, 'P.id': 4 + 2,
+                          'Score': len(str(score_format % results[0][1])) + 2, 'Title': 80}
+    else:
+        column_lengths = {'P.id': 4 + 2, 'Title': 80}
+
+    # Create the header of the table.
+    header = "".join([header + " " * (length - len(header)) for header, length in column_lengths.items()])
+    header = header.replace("Title", "Title + Crawler Data") if use_crawler_data else header
+
+    print(header)
+    print("-" * sum(column_lengths.values()))
+
+    # Print all of the formatted results.
+    for i in range(0, min(len(results), top_x)):
+        if has_score:
+            paper_id, score = results[i]
+            paper = database.paper_id_to_paper[paper_id]
+            print(i + 1, ".", " " * (column_lengths["Rank"] - len(str(i + 1)) - 1),
+                  paper.id, " " * (column_lengths["P.id"] - len(str(paper.id))),
+                  score_format % score, " " * (column_lengths["Score"] - len(str(score_format % score))),
+                  paper.stored_title.lstrip(), sep="")
+        else:
+            paper = results[i]
+            print(paper.id, " " * (column_lengths["P.id"] - len(str(paper.id))),
+                  paper.stored_title, sep="")
+
+        if use_crawler_data:
+            print(get_info(paper.stored_title, indent_offset=sum(column_lengths.values())-column_lengths["Title"]))
+
+
 def enable_search_buttons():
     gui.index_frame.indexing_button.config(state="normal")
+    gui.classification_frame.classification_button.config(state="normal")
     gui.vector_space_query_frame.query_button.config(state="normal")
     gui.boolean_query_space.query_button.config(state="normal")
     gui.probabilistic_query_frame.query_button.config(state="normal")
@@ -790,6 +847,7 @@ def enable_search_buttons():
 
 def disable_search_buttons():
     gui.index_frame.indexing_button.config(state="disabled")
+    gui.classification_frame.classification_button.config(state="disabled")
     gui.vector_space_query_frame.query_button.config(state="disabled")
     gui.boolean_query_space.query_button.config(state="disabled")
     gui.probabilistic_query_frame.query_button.config(state="disabled")
