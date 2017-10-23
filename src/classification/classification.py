@@ -27,7 +27,7 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #    for feature in attr_set.split(','):
 #        print(feature)
 
-result_count = 8
+result_count = 10
 indexer = None
 already_indexed = False
 already_trained = False
@@ -84,7 +84,7 @@ def find_labels():
 def fit_data():
     global indexer
     # For each label
-    print("fitting training data")
+    print("Fitting training data")
     for i in range(0, 9):
         for paper in array_labels[i]:
             results = indexer.results["papers"]["paper_text"][paper]["tf"]
@@ -192,13 +192,12 @@ def predict_label(paperID):
     temp = []
     results = indexer.results["papers"]["paper_text"][paperID]["tf"]
     for var in label_attributes_cleaned:
-        if results.get(var) == None:
+        if results.get(var) is None:
             temp.append(0)
         else:
             temp.append(results.get(var))
 
-    predicted_label = onevsrest_classifier.predict([temp])
-
+    predicted_label = int(onevsrest_classifier.predict([temp]))
     if predicted_label == 0:
         return "Algorithms"
     elif predicted_label == 1:
@@ -221,7 +220,7 @@ def predict_label(paperID):
         raise Exception("The classifier returned an invalid label!")
 
 # Execute this for training the oneVSrest Classifier with all labeled data and predict a label from a given paperID
-print("Prediction label for a paper:", predict_label(500))
+#print("Prediction label for a paper:", predict_label(500))
 
 
 # Execute this for training all the classifiers and return their accuracy

@@ -715,13 +715,26 @@ class ClassificationFrame(Frame):
         self.grid_columnconfigure(2, weight=1)
         self.pack(fill=X, expand=0, padx=10, pady=10)
 
-        # Create a button to start indexing.
+        # Create a button to start classifying.
+        self.classification_label = ttk.Label(self, text="ID of paper: ")
+        self.classification_field = ttk.Entry(self)
         self.classification_button = ttk.Button(self, text="Classification",
                                                 command=lambda: self.start_classification(),
                                                 width=20, state="disabled")
+
+        self.classification_label.grid(row=0, column=0, sticky=W)
+        self.classification_field.grid(row=0, column=1, columnspan=5, sticky=E + W, padx=10)
         self.classification_button.grid(row=0, column=3, sticky=E)
 
     def start_classification(self):
+
+        # Get the query.
+        paper_id = int(self.classification_field.get())
+        #print(paper_id, "this is paper id")
+        # Make sure we are not doing an empty query...
+        if paper_id == '':
+            return
+
         # Disable the index and search buttons, as we don't want it to be pressed multiple times.
         disable_search_buttons()
 
@@ -733,9 +746,7 @@ class ClassificationFrame(Frame):
 
         # Initialize the classifier.
         def runner():
-            classification.find_labels(indexer)
-            classification.fit_data(indexer)
-            classification.print_results()
+            print("paper with id", paper_id, "is classified in:", classification.predict_label(paper_id))
             self.finish_classifying()
 
         t = threading.Thread(target=runner)
