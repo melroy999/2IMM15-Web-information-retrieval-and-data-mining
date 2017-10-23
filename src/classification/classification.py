@@ -1,4 +1,5 @@
 import information_retrieval.vector_space_analysis as vsa
+import warnings
 from sklearn.svm import LinearSVC
 from sklearn import linear_model
 from sklearn.svm import SVC
@@ -10,6 +11,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 from information_retrieval.indexer import Indexer
 from sklearn.model_selection import train_test_split
+
+warnings.simplefilter("ignore", UserWarning)
 
 #Labels from https://nips.cc/Conferences/2017/CallForPapers
 label_names = ["Algorithms", "Probabilistic Methods", "Optimization", "Applications", "Reinforcement Learning and Planning", "Theory", "Neuroscience and Cognitive Science", "Deep Learning", "Data, Competitions, Implementations, and Software"]
