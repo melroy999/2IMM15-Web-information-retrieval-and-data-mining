@@ -5,7 +5,7 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import Perceptron
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 from information_retrieval.indexer import Indexer
@@ -28,6 +28,18 @@ label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boost
 #        print(feature)
 
 result_count = 8
+indexer = None
+already_indexed = False
+already_trained = False
+onevsrest_classifier = None
+
+array_labels = []
+add_labels = []
+# This is the data structure that contains the attributes
+data = []
+# This is the ground truth for each paper
+ground_truth = []
+
 
 def search_vector_query(query, indexer):
     target_field = "paper_text"
@@ -44,8 +56,8 @@ def search_vector_query(query, indexer):
         print("Query is empty after normalization, please change the query.")
 
 
-def find_labels(indexer):
-    print("This will take about 30 seconds")
+def find_labels():
+    start_indexing()
     for attr_set in label_attributes:
         one_label = []
         for feature in attr_set.split(','):
@@ -69,19 +81,8 @@ def find_labels(indexer):
        #         real_labels.append(number)
 
 
-array_labels = []
-add_labels = []
-
-# Jeanpierre
-
-# This is the data structure that contains the attributes
-data = []
-
-# This is the ground truth for each paper
-ground_truth = []
-
-
-def fit_data(indexer):
+def fit_data():
+    global indexer
     # For each label
     print("fitting training data")
     for i in range(0, 9):
@@ -100,9 +101,6 @@ def fit_data(indexer):
             #print(temp)
 
 
-    #There should be an equal amount of data elements as ground_truth elements
-    print(len(data), " should be equal to ", len(ground_truth))
-
 #print(results.get("memory"))
 #sorted_results = sorted(results.items(), key=operator.itemgetter(1))
 #print(sorted_results)
@@ -112,6 +110,29 @@ def fit_data(indexer):
 #      [1, 1, 1, 1],
 #      [4, 4, 2, 1]]
 # y = [1, 2, 3, 4]
+
+
+def start_indexing():
+    global already_indexed
+    global indexer
+    if not already_indexed:
+        print("Indexing corpus, this usually takes around 5 seconds")
+        indexer = Indexer(None)
+        indexer.index_corpus("None", False)
+        already_indexed = True
+
+
+def train_classifier():
+    global already_trained
+    global onevsrest_classifier
+    if not already_trained:
+        print("Preparing papers for training oneVSrest Classifier...(can take up to 1 minute)")
+        find_labels()
+        fit_data()
+        print("Training the oneVSrest Classifier...")
+        onevsrest_classifier = OneVsRestClassifier(SVC(kernel='linear'))
+        onevsrest_classifier.fit(data, ground_truth)
+        already_trained = True
 
 
 def print_results():
@@ -148,6 +169,10 @@ def print_results():
     print("KNeighborsClassifier:")
     print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
+    classifier = Perceptron(max_iter=1000)
+    print("Perceptron:")
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
+
 
 def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     classifier.fit(X_train, y_train)
@@ -158,8 +183,48 @@ def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     print()
 
 
-indexer = Indexer(None)
-indexer.index_corpus("None", False)
-find_labels(indexer)
-fit_data(indexer)
-print_results()
+def predict_label(paperID):
+    #make sure that indexing step is done
+    start_indexing()
+    # make sure that training step is done
+    train_classifier()
+
+    temp = []
+    results = indexer.results["papers"]["paper_text"][paperID]["tf"]
+    for var in label_attributes_cleaned:
+        if results.get(var) == None:
+            temp.append(0)
+        else:
+            temp.append(results.get(var))
+
+    predicted_label = onevsrest_classifier.predict([temp])
+
+    if predicted_label == 0:
+        return "Algorithms"
+    elif predicted_label == 1:
+        return "Probabilistic Methods"
+    elif predicted_label == 2:
+        return "Optimization"
+    elif predicted_label == 3:
+        return "Applications"
+    elif predicted_label == 4:
+        return "Reinforcement Learning and Planning"
+    elif predicted_label == 5:
+        return "Theory"
+    elif predicted_label == 6:
+        return "Neuroscience and Cognitive Science"
+    elif predicted_label == 7:
+        return "Deep Learning"
+    elif predicted_label == 8:
+        return "Data, Competitions, Implementations, and Software"
+    else:
+        raise Exception("The classifier returned an invalid label!")
+
+# Execute this for training the oneVSrest Classifier with all labeled data and predict a label from a given paperID
+print("Prediction label for a paper:", predict_label(500))
+
+
+# Execute this for training all the classifiers and return their accuracy
+# find_labels()
+# fit_data()
+# print_results()
