@@ -723,8 +723,8 @@ class ClassificationFrame(Frame):
                                                 width=20, state="disabled")
 
         self.classification_label.grid(row=0, column=0, sticky=W)
-        self.classification_field.grid(row=0, column=1, columnspan=5, sticky=E + W, padx=10)
-        self.classification_button.grid(row=0, column=3, sticky=E)
+        self.classification_field.grid(row=0, column=1, columnspan=4, sticky=E + W, padx=10)
+        self.classification_button.grid(row=0, column=6, sticky=E)
 
     def start_classification(self):
 
