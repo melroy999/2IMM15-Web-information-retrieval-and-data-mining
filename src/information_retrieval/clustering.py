@@ -36,7 +36,7 @@ def clusterKMeans(stemmer, function, clusters, seeds):
     # Getting and printing the clusters and amount of points in them
     labels, counts = np.unique(model.labels_[model.labels_ >= 0], return_counts=True)
     for i in range(clusters):
-        print(labels[i], counts[i])
+        print('Cluster %d has %d points in it.' % (labels[i], counts[i]))
 
     # Computing and printing silhouette score
     sil_coeff = silhouette_score(X, model.labels_, metric='euclidean')

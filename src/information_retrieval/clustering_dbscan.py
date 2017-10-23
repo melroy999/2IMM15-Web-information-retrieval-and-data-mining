@@ -21,8 +21,6 @@ def cluster(stemmer, function, eps, min_samples):
     db = DBSCAN(eps=eps, min_samples=min_samples).fit(X)
     labels = db.labels_
 
-    print(set(labels))
-
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
 
@@ -32,7 +30,7 @@ def cluster(stemmer, function, eps, min_samples):
     # Getting and printing the clusters and amount of points in them
     labels, counts = np.unique(db.labels_[db.labels_ >= 0], return_counts=True)
     for i in range(n_clusters_):
-        print(labels[i], counts[i])
+        print('Cluster %d has %d points in it.' % (labels[i], counts[i]))
 
     return X, db, n_clusters_
 
@@ -51,9 +49,9 @@ def clustergraph(X, db, n_clusters):
     return fig
 
 # ##########################################################################################
-eps = 1.2
-min_samples = 25
-X, db, n_clusters = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
+# eps = 1.2
+# min_samples = 25
+# X, db, n_clusters = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
 #
 # clustergraph(X, db, n_clusters)
 

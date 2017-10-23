@@ -743,7 +743,7 @@ class DBSCANClusteringFrame(Frame):
                 X, model, n_clusters = DBclus.cluster(stemmer, weight_function, eps, min_samples)
 
                 # When finished, pop up a plot frame.
-                t = PlotFrame(gui, X, model, "KM", n_clusters)
+                t = PlotFrame(gui, X, model, "DM", n_clusters)
                 t.wm_title("Window")
 
             except vsa.EmptyQueryException:  # TODO: What to do here
