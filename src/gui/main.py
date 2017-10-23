@@ -319,23 +319,23 @@ class VectorSpaceQueryFrame(Frame):
         update_status("Finished searching")
         print()
 
-    # @staticmethod
-    # def print_results(query, scores, top_x=10):
-    #     if len(scores) == 0:
-    #         print("No results found for query \"" + query + "\"!")
-    #         return
-    #
-    #     print("query = \"" + query + "\"")
-    #     print(min(len(scores), top_x), "of", len(scores), "results:")
-    #
-    #     for i in range(0, min(len(scores), top_x)):
-    #         paper_id, score = scores[i]
-    #         title = database.paper_id_to_paper[paper_id].stored_title
-    #         crawled_data = ""
-    #         if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
-    #             crawled_data = get_info(title, indent=True)
-    #         print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
-    #         print(crawled_data, "\n")
+        # @staticmethod
+        # def print_results(query, scores, top_x=10):
+        #     if len(scores) == 0:
+        #         print("No results found for query \"" + query + "\"!")
+        #         return
+        #
+        #     print("query = \"" + query + "\"")
+        #     print(min(len(scores), top_x), "of", len(scores), "results:")
+        #
+        #     for i in range(0, min(len(scores), top_x)):
+        #         paper_id, score = scores[i]
+        #         title = database.paper_id_to_paper[paper_id].stored_title
+        #         crawled_data = ""
+        #         if gui.vector_space_query_frame.show_crawled_data.instate(['selected']):
+        #             crawled_data = get_info(title, indent=True)
+        #         print(str(i + 1) + ".\t", paper_id, "\t", '%0.8f' % score, "\t", title)
+        #         print(crawled_data, "\n")
 
 
 # A helper class to make combo boxes a bit more organized.
@@ -562,11 +562,6 @@ class KMeansClusteringFrame(Frame):
                                                 "Weight Function: ")
         self.weight_function.grid(row=1, column=1, sticky=W, padx=(10, 0))
 
-        self.stemmer = CompoundComboBox(self.options_frame,
-                                        [stemmer for stemmer in KMclus.stemmer],
-                                        "Stemmer: ")
-        self.stemmer.grid(row=1, column=2, sticky=W)
-
         self.clusters_label = ttk.Label(self, text="Number of Clusters: ")
         self.clusters = ttk.Entry(self)
 
@@ -579,8 +574,6 @@ class KMeansClusteringFrame(Frame):
         self.runs_label.grid(row=2, column=3, sticky=W)
         self.runs.grid(row=2, column=4, sticky=W)
 
-        # TODO: Secondly, add more options for both such as a choice for silhouette score and amount of
-
     # Start analyzing the query and find results.
     def start_analyzing(self):
         # Disable the index and search buttons, as we don't want it to be pressed multiple times.
@@ -588,28 +581,38 @@ class KMeansClusteringFrame(Frame):
 
         # Get the user input on the values to use
         weight_function = self.weight_function.get()
-        stemmer = self.stemmer.get()
         # Check that all values are filled in
-        if self.clusters.get() != '':
-            if int(self.clusters.get()) > 0:
-                clusters = int(self.clusters.get())
+        try:
+            if self.clusters.get() != '':
+                if int(self.clusters.get()) > 0:
+                    clusters = int(self.clusters.get())
+                else:
+                    print("Please fill in a value greater than 0 for clusters.", end="\n\n")
+                    enable_search_buttons()
+                    return
             else:
-                print("Please fill in a value greater than 0 for clusters")
+                print("Please fill in a value greater than 0 for clusters.", end="\n\n")
                 enable_search_buttons()
                 return
-        else:
-            print("Please fill in a value greater than 0 for clusters")
+        except ValueError:
+            print("Please fill in an integer value for clusters.", end="\n\n")
             enable_search_buttons()
             return
-        if self.runs.get() != '':
-            if int(self.runs.get()) > 0:
-                runs = int(self.runs.get())
+
+        try:
+            if self.runs.get() != '':
+                if int(self.runs.get()) > 0:
+                    runs = int(self.runs.get())
+                else:
+                    print("Please fill in a value greater than 0 for runs.", end="\n\n")
+                    enable_search_buttons()
+                    return
             else:
-                print("Please fill in a value greater than 0 for runs")
+                print("Please fill in a value greater than 0 for runs.", end="\n\n")
                 enable_search_buttons()
                 return
-        else:
-            print("Please fill in a value greater than 0 for runs")
+        except ValueError:
+            print("Please fill in an integer value for runs.", end="\n\n")
             enable_search_buttons()
             return
 
@@ -618,7 +621,6 @@ class KMeansClusteringFrame(Frame):
         print("=== CLUSTERING ===")
         print("Starting k-Means clustering with the following settings: ")
         print("- Weight function:", weight_function)
-        print("- Stemmer:", stemmer)
         print("- Clusters:", clusters)
         print("- Runs:", runs)
         print()
@@ -627,13 +629,13 @@ class KMeansClusteringFrame(Frame):
         def runner():
             # Calculate the scores.
             try:
-                X, model = KMclus.clusterKMeans(stemmer, weight_function, clusters, runs)
+                X, model = KMclus.clusterKMeans(indexer, weight_function, clusters, runs)
 
                 # When finished, pop up a plot frame.
                 t = PlotFrame(gui, X, model, "KM", 0)
                 t.wm_title("Window")
 
-            except vsa.EmptyQueryException:  # TODO: What to do here
+            except vsa.EmptyQueryException:
                 print("Query is empty after normalization, please change the query.")
 
             # Finish the analyzing process.
@@ -652,6 +654,7 @@ class KMeansClusteringFrame(Frame):
         update_status("Finished clustering")
         print()
 
+
 # The part of the GUI which handles clustering settings and functions.
 class DBSCANClusteringFrame(Frame):
     def __init__(self, master):
@@ -661,7 +664,7 @@ class DBSCANClusteringFrame(Frame):
 
         # Start by making a bar at the top containing button to start clustering the data
         self.DBSCANcluster_button = ttk.Button(self, text="Cluster", command=lambda: self.start_analyzing(),
-                                         width=20, state="disabled")
+                                               width=20, state="disabled")
 
         self.DBSCANcluster_button.grid(row=1, column=6, sticky=E)
 
@@ -675,11 +678,6 @@ class DBSCANClusteringFrame(Frame):
                                                 "Weight Function: ")
         self.weight_function.grid(row=1, column=1, sticky=W, padx=(10, 0))
 
-        self.stemmer = CompoundComboBox(self.options_frame,
-                                        [stemmer for stemmer in DBclus.stemmer],
-                                        "Stemmer: ")
-        self.stemmer.grid(row=1, column=2, sticky=W)
-
         self.eps_label = ttk.Label(self, text="Eps: ")
         self.eps = ttk.Entry(self)
 
@@ -692,8 +690,6 @@ class DBSCANClusteringFrame(Frame):
         self.min_samples_label.grid(row=2, column=3, sticky=W)
         self.min_samples.grid(row=2, column=4, sticky=W)
 
-        # TODO: First get DBSCAN working
-
     # Start analyzing the query and find results.
     def start_analyzing(self):
         # Disable the index and search buttons, as we don't want it to be pressed multiple times.
@@ -701,28 +697,38 @@ class DBSCANClusteringFrame(Frame):
 
         # Get the user input on the values to use
         weight_function = self.weight_function.get()
-        stemmer = self.stemmer.get()
         # Check that all values are filled in
-        if self.eps.get() != '':
-            if float(self.eps.get()) > 0:
-                eps = float(self.eps.get())
+        try:
+            if self.eps.get() != '':
+                if float(self.eps.get()) > 0:
+                    eps = float(self.eps.get())
+                else:
+                    print("Please fill in a value greater than 0 for eps.", end="\n\n")
+                    enable_search_buttons()
+                    return
             else:
-                print("Please fill in a value greater than 0 for eps")
+                print("Please fill in a value greater than 0 for eps.", end="\n\n")
                 enable_search_buttons()
                 return
-        else:
-            print("Please fill in a value greater than 0 for eps")
+        except ValueError:
+            print("Please fill in a float value for eps.", end="\n\n")
             enable_search_buttons()
             return
-        if self.min_samples.get() != '':
-            if int(self.min_samples.get()) > 0:
-                min_samples = int(self.min_samples.get())
+
+        try:
+            if self.min_samples.get() != '':
+                if int(self.min_samples.get()) > 0:
+                    min_samples = int(self.min_samples.get())
+                else:
+                    print("Please fill in a value greater than 0 for min_samples.", end="\n\n")
+                    enable_search_buttons()
+                    return
             else:
-                print("Please fill in a value greater than 0 for min_samples")
+                print("Please fill in a value greater than 0 for min_samples.", end="\n\n")
                 enable_search_buttons()
                 return
-        else:
-            print("Please fill in a value greater than 0 for min_samples")
+        except ValueError:
+            print("Please fill in an integer value for min_samples.", end="\n\n")
             enable_search_buttons()
             return
 
@@ -731,7 +737,6 @@ class DBSCANClusteringFrame(Frame):
         print("=== CLUSTERING ===")
         print("Starting DBSCAN clustering with the following settings: ")
         print("- Weight function:", weight_function)
-        print("- Stemmer:", stemmer)
         print("- Eps:", eps)
         print("- min_samples:", min_samples)
         print()
@@ -740,13 +745,13 @@ class DBSCANClusteringFrame(Frame):
         def runner():
             # Calculate the scores.
             try:
-                X, model, n_clusters = DBclus.cluster(stemmer, weight_function, eps, min_samples)
+                X, model, n_clusters = DBclus.cluster(indexer, weight_function, eps, min_samples)
 
                 # When finished, pop up a plot frame.
                 t = PlotFrame(gui, X, model, "DM", n_clusters)
                 t.wm_title("Window")
 
-            except vsa.EmptyQueryException:  # TODO: What to do here
+            except vsa.EmptyQueryException:
                 print("Query is empty after normalization, please change the query.")
 
             # Finish the analyzing process.
@@ -948,7 +953,7 @@ def print_results(query, results, use_crawler_data, has_score=True, top_x=10, sc
                   paper.stored_title, sep="")
 
         if use_crawler_data:
-            print(get_info(paper.stored_title, indent_offset=sum(column_lengths.values())-column_lengths["Title"]))
+            print(get_info(paper.stored_title, indent_offset=sum(column_lengths.values()) - column_lengths["Title"]))
 
 
 def enable_search_buttons():

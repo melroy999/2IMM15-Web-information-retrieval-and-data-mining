@@ -1,16 +1,12 @@
 from sklearn.cluster import DBSCAN
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.metrics import silhouette_score
-from information_retrieval.indexer import Indexer
 from sklearn.decomposition import TruncatedSVD
 import matplotlib.pyplot as plt
 
-def cluster(stemmer, function, eps, min_samples):
-    # Import the vectorization as done by the indexing.
-    indexer = Indexer()
-    indexer.index_corpus(stemmer, True)
 
+def cluster(indexer, function, eps, min_samples):
+    # Import the vectorization as done by the indexing.
     # Get the normalized scores for the papers
     normalized = indexer.get_normalized_paper_values("paper_text", function)
 
@@ -34,6 +30,7 @@ def cluster(stemmer, function, eps, min_samples):
 
     return X, db, n_clusters_
 
+
 def clustergraph(X, db, n_clusters):
     # Visualizing section
 
@@ -43,10 +40,11 @@ def clustergraph(X, db, n_clusters):
 
     fig = plt.figure(1)
     # Plot graph with all nodes
-    plt.scatter(data2D[:,0], data2D[:,1], s=2, c=db.labels_)
+    plt.scatter(data2D[:, 0], data2D[:, 1], s=2, c=db.labels_)
 
     plt.title('Estimated number of clusters: %d' % n_clusters)
     return fig
+
 
 # ##########################################################################################
 # eps = 1.2
@@ -55,9 +53,6 @@ def clustergraph(X, db, n_clusters):
 #
 # clustergraph(X, db, n_clusters)
 
+
 # The scoring measures the user can choose from.
 scoring_measures = ["tf.idf", "wf.idf"]
-
-# Choices for stemmer
-stemmer = ["Nltk wordnet lemmatizer", "Nltk porter stemmer",
-           "Nltk lancaster stemmer", "Nltk snowball stemmer", "None"]

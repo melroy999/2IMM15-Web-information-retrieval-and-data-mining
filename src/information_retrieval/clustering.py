@@ -1,16 +1,14 @@
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction import DictVectorizer
-from information_retrieval.indexer import Indexer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
 import numpy as np
 
-def clusterKMeans(stemmer, function, clusters, seeds):
+
+def clusterKMeans(indexer, function, clusters, seeds):
     # First, set up the data correctly
     # Import the vectorization as done by the indexing.
-    indexer = Indexer()
-    indexer.index_corpus(stemmer, True)
     normalized = indexer.get_normalized_paper_values("paper_text", function)
 
     # Use the results found in the indexing as the vector.
@@ -53,12 +51,12 @@ def clutersgraph(X, model):
 
     fig = plt.figure(1)
     # Plot graph with all nodes
-    plt.scatter(data2D[:,0], data2D[:,1], s=2, c= model.labels_)
+    plt.scatter(data2D[:, 0], data2D[:, 1], s=2, c=model.labels_)
 
     centers2D = tSVD.transform(model.cluster_centers_)
 
     # Plot centroids
-    plt.scatter(centers2D[:,0], centers2D[:,1], marker='x', s=20, linewidths=3, c='r')
+    plt.scatter(centers2D[:, 0], centers2D[:, 1], marker='x', s=20, linewidths=3, c='r')
     return fig
 
 
