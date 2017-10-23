@@ -688,13 +688,18 @@ class ClassificationFrame(Frame):
         # Create a button to start classifying.
         self.classification_label = ttk.Label(self, text="ID of paper: ")
         self.classification_field = ttk.Entry(self)
+        self.reset_training_data = ttk.Button(self, text="Reset training data",
+                                                command=lambda: classification.reset_training_data(),
+                                                width=20)
+
         self.classification_button = ttk.Button(self, text="Classification",
                                                 command=lambda: self.start_classification(),
                                                 width=20, state="disabled")
 
         self.classification_label.grid(row=0, column=0, sticky=W)
         self.classification_field.grid(row=0, column=1, columnspan=4, sticky=E + W, padx=10)
-        self.classification_button.grid(row=0, column=6, sticky=E)
+        self.reset_training_data.grid(row=0, column=6, sticky=E)
+        self.classification_button.grid(row=0, column=7, sticky=E)
 
     def start_classification(self):
         # Get the query.
@@ -703,9 +708,13 @@ class ClassificationFrame(Frame):
         # Make sure we are not doing an empty query...
         if paper_id == '':
             return
-
         try:
             paper_id = int(paper_id)
+            try:
+                paper = database.paper_id_to_paper[paper_id]
+            except IndexError:
+                print("The given paper id is not connected to any paper.")
+                return
         except ValueError:
             print("Please enter a valid number for the paper id field.")
             return
@@ -716,12 +725,16 @@ class ClassificationFrame(Frame):
         # Change the status.
         update_status("Classifying...")
         print("=== CLASSIFIER ===")
-        print("Starting classification: ")
+        print("Starting classification for paper: \"" + paper.stored_title + "\"")
+        print("- Paper id:", paper_id)
         print()
 
         # Initialize the classifier.
         def runner():
-            print("paper with id", paper_id, "is classified in:", classification.predict_label(paper_id))
+            self.reset_training_data.config(state="disabled")
+            print("Paper with id", paper_id, "is classified in:", classification.predict_label(paper_id, indexer))
+            print()
+            self.reset_training_data.config(state="enabled")
             self.finish_classifying()
 
         t = threading.Thread(target=runner)

@@ -9,7 +9,6 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import Perceptron
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
-from information_retrieval.indexer import Indexer
 from sklearn.model_selection import train_test_split
 
 warnings.simplefilter("ignore", UserWarning)
@@ -20,8 +19,6 @@ label_attributes = ["Active Learning, Bandit Algorithms, Boosting and Ensemble M
 label_attributes_cleaned = ["active", "learning", "bandit", "algorithms", "boosting", "ensemble", "methods", "classification", "clustering", "collaborative", "filtering", "components", "analysis", "cca", "ica", "lda", "pca", "density", "estimation", "dynamical", "systems", "hyperparameter", "selection", "kernel", "methods", "large", "margin", "methods", "metric", "learning", "missing", "data", "model", "selection", "structure", "learning", "multitask", "transfer", "learning", "nonlinear", "dimensionality", "reduction", "manifold", "learning", "online", "learning", "ranking", "preference", "learning", "regression", "reinforcement", "learning", "regression", "reinforcement", "learning", "relational", "learning", "representation learning", "semi", "supervised", "semi-supervised", "learning", "similarity", "distance", "learning", "sparse", "coding", "dimensionality", "expansion", "sparsity", "compressed", "sensing", "spectral", "methods", "sustainability", "stochastic", "methods", "structured", "prediction", "unsupervised", "learning", "bayesian", "nonparametrics", "bayesian", "theory", "belief", "propagation", "causal", "inference", "distributed", "inference", "gaussian", "processes", "graphical", "models", "hierarchical", "models", "latent", "variable", "models", "mcmc", "topic", "models", "variational", "inference", "combinatorial", "optimization", "convex", "optimization", "non-convex", "optimization", "submodular", "optimization", "audio", "speech", "processing", "computational", "biology", "bioinformatics", "computational", "social", "science", "computer", "vision", "denoising", "dialog", "communication-based", "communication", "based" "learning", "fairness", "accountability", "transparency", "game", "playing", "hardware", "systems", "image", "segmentation", "information", "retrieval", "matrix", "tensor", "factorization", "motor", "control", "music", "modeling", "analysis", "natural", "language", "processing", "natural", "scene", "statistics", "network", "analysis", "object", "detection", "object", "recognition", "privacy", "anonymity", "security", "quantitative", "finance", "econometrics", "recommender", "systems", "robotics", "signal", "processing", "source", "separation", "speech", "recognition", "systems", "biology", "text", "analysis", "time", "series", "analysis", "video", "motion", "tracking", "visual", "features", "visual", "perception", "visual", "question", "answering", "visual", "scene", "analysis", "interpretation", "web", "applications", "internet", "data", "decision", "control", "exploration", "hierarchical", "rl", "markov", "decision", "processes", "model", "based", "rl", "multi", "agent", "rl", "navigation", "planning", "competitive", "analysis", "computational", "complexity", "control", "theory", "frequentist", "statistics", "game", "theory", "computational", "cconomics", "hardness", "learning", "approximations", "information", "theory", "large", "deviations", "asymptotic", "analysis", "learning", "theory", "regularization", "spaces", "functions" "kernels", "statistical", "physics", "learning", "auditory", "perception", "modeling", "brain", "imaging", "brain", "mapping", "brain", "segmentation", "brain", "computer", "interfaces", "neural", "prostheses", "cognitive", "science", "connectomics", "human", "animal", "learning", "language", "cognitive", "science", "memory", "neural", "coding", "neuropsychology", "neuroscience", "perception", "plasticity", "adaptation", "problem", "solving", "reasoning", "spike", "train", "generation", "synaptic", "modulation", "adversarial", "networks", "attention", "models", "biologically", "plausible", "deep", "networks", "deep", "autoencoders", "efficient", "inference", "methods", "efficient", "training", "methods", "embedding", "approaches", "generative", "models", "interaction", "based", "deep", "networks", "learning", "learn", "memory", "augmented", "neural", "networks", "neural", "abstract", "machines", "one", "shot", "low", "shot", "learning", "approaches", "optimization", "deep", "networks", "predictive", "models", "program", "induction", "recurrent", "networks", "supervised", "deep", "networks", "virtual", "environments", "visualization", "expository", "techniques", "deep", "networks", "benchmarks", "competitions", "challenges", "data", "sets", "data", "repositories", "software", "toolkits"]
 
 result_count = 8
-indexer = None
-already_indexed = False
 already_trained = False
 onevsrest_classifier = None
 
@@ -47,8 +44,7 @@ def search_vector_query(query, indexer):
         print("Query is empty after normalization, please change the query.")
 
 
-def find_labels():
-    start_indexing()
+def find_labels(indexer):
     for attr_set in label_attributes:
         one_label = []
         for feature in attr_set.split(','):
@@ -64,8 +60,7 @@ def find_labels():
         array_labels.append(add_labels[z])
 
 
-def fit_data():
-    global indexer
+def fit_data(indexer):
     # For each label
     print("Fitting training data")
     for i in range(0, 9):
@@ -83,27 +78,18 @@ def fit_data():
             ground_truth.append(i)
 
 
-def start_indexing():
-    global already_indexed
-    global indexer
-    if not already_indexed:
-        print("Indexing corpus, this usually takes around 5 seconds")
-        indexer = Indexer(None)
-        indexer.index_corpus("None", False)
-        already_indexed = True
-
-
-def train_classifier():
+def train_classifier(indexer):
     global already_trained
     global onevsrest_classifier
     if not already_trained:
-        print("Preparing papers for training oneVSrest Classifier...(can take up to 1 minute)")
-        find_labels()
-        fit_data()
+        print("Preparing papers for training oneVSrest classifier...(can take up to 1 minute)")
+        find_labels(indexer)
+        fit_data(indexer)
         print("Training the oneVSrest Classifier...")
         onevsrest_classifier = OneVsRestClassifier(SVC(kernel='linear'))
         onevsrest_classifier.fit(data, ground_truth)
         already_trained = True
+        print()
 
 
 def print_results():
@@ -154,14 +140,31 @@ def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     print()
 
 
-def predict_label(paperID):
-    # make sure that indexing step is done
-    start_indexing()
+def reset_training_data():
+    global already_trained
+    global onevsrest_classifier
+    global array_labels
+    global add_labels
+    global data
+    global ground_truth
+
+    print("Resetting training data in classifier.")
+    print()
+
+    already_trained = False
+    onevsrest_classifier = None
+    array_labels = []
+    add_labels = []
+    data = []
+    ground_truth = []
+
+
+def predict_label(paper_id, indexer):
     # make sure that training step is done
-    train_classifier()
+    train_classifier(indexer)
 
     temp = []
-    results = indexer.results["papers"]["paper_text"][paperID]["tf"]
+    results = indexer.results["papers"]["paper_text"][paper_id]["tf"]
     for var in label_attributes_cleaned:
         if results.get(var) is None:
             temp.append(0)
@@ -169,25 +172,9 @@ def predict_label(paperID):
             temp.append(results.get(var))
 
     predicted_label = int(onevsrest_classifier.predict([temp]))
-    if predicted_label == 0:
-        return "Algorithms"
-    elif predicted_label == 1:
-        return "Probabilistic Methods"
-    elif predicted_label == 2:
-        return "Optimization"
-    elif predicted_label == 3:
-        return "Applications"
-    elif predicted_label == 4:
-        return "Reinforcement Learning and Planning"
-    elif predicted_label == 5:
-        return "Theory"
-    elif predicted_label == 6:
-        return "Neuroscience and Cognitive Science"
-    elif predicted_label == 7:
-        return "Deep Learning"
-    elif predicted_label == 8:
-        return "Data, Competitions, Implementations, and Software"
-    else:
+    try:
+        return label_names[predicted_label]
+    except KeyError:
         raise Exception("The classifier returned an invalid label!")
 
 # Execute this for training the oneVSrest Classifier with all labeled data and predict a label from a given paperID
