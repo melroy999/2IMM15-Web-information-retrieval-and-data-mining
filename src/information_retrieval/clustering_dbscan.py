@@ -29,12 +29,12 @@ def cluster(stemmer, function, eps, min_samples):
     # Number of cluster gotten from the data
     print('Estimated number of clusters: %d' % n_clusters_)
 
-    unique_labels, counts = np.unique(db.labels_[db.labels_>=0], return_counts=True)
+    # Getting and printing the clusters and amount of points in them
+    labels, counts = np.unique(db.labels_[db.labels_ >= 0], return_counts=True)
+    for i in range(n_clusters_):
+        print(labels[i], counts[i])
 
-    sil_coeff = silhouette_score(X, db.labels_, metric='euclidean')
-    print("For n_clusters={}, The Silhouette Coefficient is {}".format(n_clusters_, sil_coeff))
-
-    return X, db, n_clusters_, unique_labels, counts
+    return X, db, n_clusters_
 
 def clustergraph(X, db, n_clusters):
     # Visualizing section
@@ -51,12 +51,9 @@ def clustergraph(X, db, n_clusters):
     return fig
 
 # ##########################################################################################
-# eps = 1.2
-# min_samples = 25
-# X, db, n_clusters, unique_labels, counts = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
-#
-# for i in range(n_clusters):
-#     print(unique_labels[i], counts[i])
+eps = 1.2
+min_samples = 25
+X, db, n_clusters = cluster("Nltk porter stemmer", "tf.idf", eps, min_samples)
 #
 # clustergraph(X, db, n_clusters)
 

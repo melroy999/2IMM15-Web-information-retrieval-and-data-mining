@@ -579,7 +579,6 @@ class KMeansClusteringFrame(Frame):
         self.runs_label.grid(row=2, column=3, sticky=W)
         self.runs.grid(row=2, column=4, sticky=W)
 
-        # TODO: First get DBSCAN working
         # TODO: Secondly, add more options for both such as a choice for silhouette score and amount of
 
     # Start analyzing the query and find results.
@@ -643,7 +642,120 @@ class KMeansClusteringFrame(Frame):
         t = threading.Thread(target=runner)
         t.start()
 
-    # Finish analyzing and report the results.
+    # Finish analyzing and re-enable the buttons.
+    @staticmethod
+    def finish_analyzing():
+        # Enable the index and search buttons.
+        enable_search_buttons()
+
+        # Change the status.
+        update_status("Finished clustering")
+        print()
+
+# The part of the GUI which handles clustering settings and functions.
+class DBSCANClusteringFrame(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.grid_columnconfigure(5, weight=1)
+        self.pack(fill=X, expand=0, padx=10, pady=10)
+
+        # Start by making a bar at the top containing button to start clustering the data
+        self.DBSCANcluster_button = ttk.Button(self, text="Cluster", command=lambda: self.start_analyzing(),
+                                         width=20, state="disabled")
+
+        self.DBSCANcluster_button.grid(row=1, column=6, sticky=E)
+
+        # Advanced options for the querying.
+        self.options_frame = Frame(self)
+        self.options_frame.grid_columnconfigure(5, weight=1)
+        self.options_frame.grid(row=1, column=1, columnspan=5, sticky=W + E, pady=(3, 0))
+
+        self.weight_function = CompoundComboBox(self.options_frame,
+                                                [scoring_mode for scoring_mode in DBclus.scoring_measures],
+                                                "Weight Function: ")
+        self.weight_function.grid(row=1, column=1, sticky=W, padx=(10, 0))
+
+        self.stemmer = CompoundComboBox(self.options_frame,
+                                        [stemmer for stemmer in DBclus.stemmer],
+                                        "Stemmer: ")
+        self.stemmer.grid(row=1, column=2, sticky=W)
+
+        self.eps_label = ttk.Label(self, text="Eps: ")
+        self.eps = ttk.Entry(self)
+
+        self.eps_label.grid(row=2, column=1, sticky=W)
+        self.eps.grid(row=2, column=2, sticky=W)
+
+        self.min_samples_label = ttk.Label(self, text="min_samples: ")
+        self.min_samples = ttk.Entry(self)
+
+        self.min_samples_label.grid(row=2, column=3, sticky=W)
+        self.min_samples.grid(row=2, column=4, sticky=W)
+
+        # TODO: First get DBSCAN working
+
+    # Start analyzing the query and find results.
+    def start_analyzing(self):
+        # Disable the index and search buttons, as we don't want it to be pressed multiple times.
+        disable_search_buttons()
+
+        # Get the user input on the values to use
+        weight_function = self.weight_function.get()
+        stemmer = self.stemmer.get()
+        # Check that all values are filled in
+        if self.eps.get() != '':
+            if float(self.eps.get()) > 0:
+                eps = float(self.eps.get())
+            else:
+                print("Please fill in a value greater than 0 for eps")
+                enable_search_buttons()
+                return
+        else:
+            print("Please fill in a value greater than 0 for eps")
+            enable_search_buttons()
+            return
+        if self.min_samples.get() != '':
+            if int(self.min_samples.get()) > 0:
+                min_samples = int(self.min_samples.get())
+            else:
+                print("Please fill in a value greater than 0 for min_samples")
+                enable_search_buttons()
+                return
+        else:
+            print("Please fill in a value greater than 0 for min_samples")
+            enable_search_buttons()
+            return
+
+        # Change the status.
+        update_status("Clustering... This may take a while.")
+        print("=== CLUSTERING ===")
+        print("Starting DBSCAN clustering with the following settings: ")
+        print("- Weight function:", weight_function)
+        print("- Stemmer:", stemmer)
+        print("- Eps:", eps)
+        print("- min_samples:", min_samples)
+        print()
+
+        # Initialize the analyzer.
+        def runner():
+            # Calculate the scores.
+            try:
+                X, model, n_clusters = DBclus.cluster(stemmer, weight_function, eps, min_samples)
+
+                # When finished, pop up a plot frame.
+                t = PlotFrame(gui, X, model, "KM", n_clusters)
+                t.wm_title("Window")
+
+            except vsa.EmptyQueryException:  # TODO: What to do here
+                print("Query is empty after normalization, please change the query.")
+
+            # Finish the analyzing process.
+            self.finish_analyzing()
+
+        t = threading.Thread(target=runner)
+        t.start()
+
+    # Finish analyzing and re-enable the buttons.
     @staticmethod
     def finish_analyzing():
         # Enable the index and search buttons.
@@ -784,6 +896,9 @@ class InterfaceRoot(Frame):
         self.kmeansclustering_frame = KMeansClusteringFrame(self)
         self.notebook.add(self.kmeansclustering_frame, text="KMeansClustering")
 
+        self.dbscansclustering_frame = DBSCANClusteringFrame(self)
+        self.notebook.add(self.dbscansclustering_frame, text="DBSCANClustering")
+
         self.classification_frame = ClassificationFrame(self)
         self.notebook.add(self.classification_frame, text="Classification")
 
@@ -843,6 +958,7 @@ def enable_search_buttons():
     gui.boolean_query_space.query_button.config(state="normal")
     gui.probabilistic_query_frame.query_button.config(state="normal")
     gui.kmeansclustering_frame.cluster_button.config(state="normal")
+    gui.dbscansclustering_frame.DBSCANcluster_button.config(state="normal")
 
 
 def disable_search_buttons():
@@ -852,6 +968,7 @@ def disable_search_buttons():
     gui.boolean_query_space.query_button.config(state="disabled")
     gui.probabilistic_query_frame.query_button.config(state="disabled")
     gui.kmeansclustering_frame.cluster_button.config(state="disabled")
+    gui.dbscansclustering_frame.DBSCANcluster_button.config(state="disabled")
 
 
 if __name__ == '__main__':
