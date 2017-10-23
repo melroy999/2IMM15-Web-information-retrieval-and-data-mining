@@ -3,6 +3,10 @@
 ## Instructions for the GUI controlled components
 Components: preprocessor, indexer, query system, clustering and classification
 
+Please download the following files:
+- database.sqlite: https://melroy.pro/uploads/database.sqlite
+- crawler_sqlite.db: https://melroy.pro/uploads/crawler_sqlite.db
+
 The components above have been merged into the master branch. Please take the following steps to get this component working:
 1. Clone the master branch of the git repository into a directory of choice.
 2. Import the directory in PyCharm. Once imported, select the “src” folder, right click and choose the option “Mark Directory as > Source Root”
