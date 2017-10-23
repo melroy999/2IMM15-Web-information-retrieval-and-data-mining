@@ -697,12 +697,17 @@ class ClassificationFrame(Frame):
         self.classification_button.grid(row=0, column=6, sticky=E)
 
     def start_classification(self):
-
         # Get the query.
-        paper_id = int(self.classification_field.get())
-        #print(paper_id, "this is paper id")
+        paper_id = self.classification_field.get().strip()
+
         # Make sure we are not doing an empty query...
         if paper_id == '':
+            return
+
+        try:
+            paper_id = int(paper_id)
+        except ValueError:
+            print("Please enter a valid number for the paper id field.")
             return
 
         # Disable the index and search buttons, as we don't want it to be pressed multiple times.
