@@ -1,7 +1,9 @@
 import information_retrieval.vector_space_analysis as vsa
 from sklearn.svm import LinearSVC
+from sklearn import linear_model
 from sklearn.svm import SVC
 from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import GaussianNB
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -115,8 +117,7 @@ def fit_data(indexer):
 def print_results():
     X_train, X_test, y_train, y_test = train_test_split(data, ground_truth, test_size=.25, random_state=42, shuffle=True)
 
-    classifier = LinearSVC(random_state=42)
-    LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
+    classifier = LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
          intercept_scaling=1, loss='squared_hinge', max_iter=1000,
          multi_class='ovr', penalty='l2', random_state=0, tol=0.0001,
          verbose=0)
@@ -131,8 +132,16 @@ def print_results():
     print("BernoulliNB:")
     print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
-    classifier = DecisionTreeClassifier(random_state=0)
-    print("DecisionTreeClassifier:")
+    classifier = GaussianNB(priors=None)
+    print("GaussianNB:")
+    print_pred_acc(classifier, X_train, X_test, y_train, y_test)
+
+    classifier = linear_model.SGDClassifier(alpha=0.0001, average=False, class_weight=None, epsilon=0.1,
+       eta0=0.0, fit_intercept=True, l1_ratio=0.15,
+       learning_rate='optimal', loss='hinge', max_iter=None, n_iter=None,
+       n_jobs=1, penalty='l2', power_t=0.5, random_state=None,
+       shuffle=True, tol=None, verbose=0, warm_start=False)
+    print("SGDClassifier:")
     print_pred_acc(classifier, X_train, X_test, y_train, y_test)
 
     classifier = KNeighborsClassifier(n_neighbors=5)
