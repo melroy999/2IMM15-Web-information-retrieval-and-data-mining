@@ -7,24 +7,19 @@ from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 from sklearn.manifold import TSNE
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import NMF
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
-import random 
 
 #visualization packages
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import matplotlib
 import seaborn as sns
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import LSTM
 from keras.utils import to_categorical 
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
+import difflib
 
 
 class A_TM:
@@ -47,8 +42,6 @@ class A_TM:
         self.model_name=model_name+'.atmodel'
         self.author_vecs_name=model_name+'_author_vecs.p'
         self.tsne_name=model_name+'_tsne.p'
-#        self.author_top_topic_by_year_name=model_name+'_author_top_topic_by_year.p'
-#        self.year_dist_name=model_name+'_year_dist.p'
         self.kmeans_name=model_name+'_kmeans.p'
         self.keras_cl_model_name=model_name+'_keras.p'
         
@@ -233,10 +226,10 @@ class A_TM:
         sims = [self.get_vector_similarity_hellinger(vec, vec2,self.model) for vec2 in vecs]
         return sims
     
-    def get_sim_author_table(self,name, top_n=10,smallest_author=1):
+    def get_sim_author_table(self,Id, top_n=10,smallest_author=1):
         author_vecs=self.author_vecs
         model=self.model
-        sims = self.get_sims(model.get_author_topics(name),author_vecs)
+        sims = self.get_sims(model.get_author_topics(Id),author_vecs)
         table = []
         for elem in enumerate(sims):
             author_id = model.id2author[elem[0]]
@@ -261,23 +254,11 @@ class A_TM:
                 words += word + ' '
             print('Words: ' + words)
             
-
-
-    def print_top_titles_by_topic(self):
-        topic_labels=['Topic #'+str(i) for i in range(self.model.num_topics)]
-        
-    
-    
-    
-
-
-
-    
-    def show_author(self,author):
+    def show_author_by_id(self,author):
         model=self.model
         topic_labels=self.topic_labels
         print('\n%s' % author)
-        print('Docs:', model.author2doc[author])
+        #print('Docs:', model.author2doc[author])
         print('Topics:')
         print([(topic_labels[topic[0]], topic[1]) for topic in model[author]])
         dist=matutils.sparse2full(model[author], model.num_topics)
@@ -288,9 +269,47 @@ class A_TM:
         plt.show()
         print(self.get_author_name_from_id(author))
         
+        
+    
+    def show_author_by_name(self,name):
+        Name,Id=self.get_closest_author(name)
+        if(Name!='null'):
+            if(Name==name):
+                self.show_author_by_id(Id)
+            else:
+                self.show_author_by_id(Id)
+                
+        
+        
+        
     def get_author_name_from_id(self,strId):
         return self.df_authors['name'][self.df_authors['id']==strId].values[0]
+    
+    def get_author_id_from_name(self,strname):
+        return self.df_authors['id'][self.df_authors['name']==strname].values[0]
 
+
+    
+    def get_closest_author(self,author_name):
+        choices =self.df_authors['name'].values
+        names= difflib.get_close_matches(author_name,choices)
+        if(len(names)==0):
+            print('Couldn\'t find the author or authors with similar names')
+            name='null'
+            Id=-1
+        else:
+            name=names[0]
+            if(name!=author_name):
+                print('\nDidn\'t find any author with the name: %s'%author_name)
+                print('\n Found similar name: %s' %name)
+                print('\n Showing results for: %s' %name)
+                
+            
+                
+            Id=self.get_author_id_from_name(name)
+        return name,Id
+    
+    
     
     
     
@@ -362,7 +381,7 @@ if __name__=='__main__':
     #Tm.create_classification_from_cluster_data();
     #Tm.show_author('13')
     #df=Tm.get_sim_author_table('13')
-    Tm.plot_author_tsne_plot()
+    #Tm.plot_author_tsne_plot()
     
 
         

@@ -5,12 +5,8 @@ from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 from sklearn.manifold import TSNE
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import NMF
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
-import random 
 
 #visualization packages
 import matplotlib.pyplot as plt
@@ -19,9 +15,10 @@ import matplotlib
 import seaborn as sns
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import LSTM
 from keras.utils import to_categorical 
 from keras.callbacks import EarlyStopping
+from keras.models import load_model
+
 
 
 class LDA_TM:
@@ -105,8 +102,8 @@ class LDA_TM:
         self.author_top_topic_by_year=np.array(pickle.load(open(self.author_top_topic_by_year_name,"rb")))
     
     def load_classification_model(self):
-        print("\nLoading Keras classification mode from %s" %self.keras_cl_model_name)
-        self.keras_cl_model= pickle.load(open(self.keras_cl_model_name,"rb"))
+        print("\nLoading Keras classification model from %s" %self.keras_cl_model_name)
+        self.keras_cl_model= load_model(self.keras_cl_model_name)
     
         
         
@@ -199,6 +196,9 @@ class LDA_TM:
             inertianew.append(kmeans.inertia_)
         
         plt.plot(list(range(min_cluster,max_cluster)),inertianew)
+        plt.xlabel('Number of clusters')
+        plt.ylabel('Interia')
+        plt.title('Intertia plot for varying cluster size')
         plt.show()
         return inertianew
     
@@ -232,17 +232,18 @@ class LDA_TM:
                       metrics=['accuracy'])
         early_stopping_monitor = EarlyStopping(patience=5) 
 
-        model.fit(X_new, target,validation_split=0.3,epochs=50,callbacks=[early_stopping_monitor])
+        hist=model.fit(X_new, target,validation_split=0.3,epochs=50,callbacks=[early_stopping_monitor])
         self.keras_cl_model=model
-        pickle.dump(model,open(self.keras_cl_model_name,"wb"))
-        
+        model.save(self.keras_cl_model_name)
+        return hist
+       
         
         
 
 
     
    
-    def get_vector_similarity_hellinger(vec1, vec2,model):
+    def get_vector_similarity_hellinger(self,vec1, vec2,model):
         '''Get similarity between two vectors'''
         
         dist = matutils.hellinger(matutils.sparse2full(vec1, model.num_topics), \
@@ -257,16 +258,23 @@ class LDA_TM:
     def get_doc_sim_table_from_doc_num(self,doc_num, top_n=10):
         
         
-        sims = self.get_sims(self.model.get_document_topics(self.corpus[doc_num]),self.doc_vecs,self.model)
+        sims = self.get_sims(self.model.get_document_topics(self.corpus[doc_num]),self.doc_vecs)
         table = []
         for elem in enumerate(sims):
             sim = elem[1]
-            table.append((elem[0], sim))
-        df = pd.DataFrame(table, columns=['DocId', 'Score'])
+            docid=self.df_papers['id'][elem[0]]
+            title=self.df_papers['title'][elem[0]]
+            table.append((docid, sim,title))
+        df = pd.DataFrame(table, columns=['DocId', 'Score', 'Title'])
         df = df.sort_values('Score', ascending=False)[:top_n]
         
         return df
     
+    def get_doc_sim_table_from_doc_id(self,doc_id,top_n=10):
+        doc_num=self.df_papers.index[self.df_papers['id']==doc_id].tolist()[0]
+        return self.get_doc_sim_table_from_doc_num(doc_num,top_n=top_n)
+        
+        
     
     def get_doc_topic_distribution(self,doc_num):
         return matutils.sparse2full(self.doc_vecs[doc_num], self.model.num_topics)
@@ -327,18 +335,17 @@ class LDA_TM:
         plt.style.use('ggplot')
         
         
-        fig, axs = plt.subplots(3,2, figsize=(10, 15), facecolor='w', edgecolor='k')
+        fig, axs = plt.subplots(7,2, figsize=(10, 15), facecolor='w', edgecolor='k')
         fig.subplots_adjust(hspace = .1, wspace=0)
         
         axs = axs.ravel()
-        for year, idx in zip([1991,1996,2001,2006,2011,2016], range(6)):
+        for year, idx in zip([1988,1990,1992,1994,1996,1998,2000,20002,2004,2006,2008,2010,2016], range(13)):
             data = tsne_embedding[df['year']<=year]
             _ = axs[idx].scatter(data=data,x='x',y='y',s=6,c=data['hue'],cmap="Set1")
             axs[idx].set_title('published until {}'.format(year),**{'fontsize':'10'})
             axs[idx].axis('off')
         
-        plt.suptitle("all NIPS proceedings clustered by topic",**{'fontsize':'14','weight':'bold'})
-        plt.figtext(.51,0.95,'unsupervised topic modeling with NMF based on textual content + 2D-embedding with t-SNE:', **{'fontsize':'10','weight':'light'}, ha='center')
+        plt.suptitle("All NIPS proceedings clustered by topic",**{'fontsize':'14','weight':'bold'})
         
         
         fig.legend(legend_list,topic_labels,loc=(0.1,0.89),ncol=3)
@@ -363,10 +370,13 @@ class LDA_TM:
         value=df_dist.sum()[top_topic]
         print('Top topic: %s'% topic_labels[top_topic])
         print('Value: %f'%value)
+        
+        print('\n Following are the top words in the topic')
+        print(self.model.show_topic(top_topic))
         #data = df[df['year']<=year]
         ax=df_dist.sum().plot(kind='bar')
         ax.set_xticklabels(topic_labels, rotation=90)
-        plt.title('Topic distribution for the year:%d' %year)
+        plt.title('Topic Score for the year:%d' %year)
         plt.show()
         return df_dist
         
@@ -381,6 +391,12 @@ class LDA_TM:
         tf=pd.DataFrame({'Topic'+str(topic):topic_score})
         ax=tf.plot(kind='bar')
         ax.set_xticklabels([y for y in range(1987,2017)], rotation=90)
+        plt.show()
+        print('\n Following are the top words in the topic')
+        print(self.model.show_topic(topic))
+        
+        
+        
             
         return topic_score
     
@@ -413,7 +429,7 @@ class LDA_TM:
         #return df,df.empty
             
     def plot_author_evolution_plot(self,a_id,plot=True):
-        'Plots and returns the topic distribution of the author by year'
+        'Plots and returns the topic Score of the author by year'
         df_papers=self.df_papers
         years=[i for i in range(df_papers['year'].min(),df_papers['year'].max()+1)]
         df=pd.concat([pd.DataFrame({year:self.get_author_topic_dist_for_year(a_id,year,verbose=plot)}) for year in years],axis=1)
@@ -425,7 +441,7 @@ class LDA_TM:
                 else:
                     ax=df[y].plot(kind='bar')
                     ax.set_xticklabels(self.topic_labels, rotation=90)
-                    plt.title('Topic Distribution of Author in the year: %d'%y)
+                    plt.title('Topic Score of Author in the year: %d'%y)
                     plt.show()
         return df
         
@@ -443,7 +459,10 @@ class LDA_TM:
             print("The author changed the topic %d times" %len(np.unique(p)))
             print("\n Following are the topics:")
             for i in np.unique(p):
-                print("\nTopic %d" %i)
+                print("\nTopic %d" %(i+1))
+                print('\n Top Words:')
+                print(self.model.show_topic(i))
+                print('\n')
             
         return p
     
@@ -465,7 +484,7 @@ class LDA_TM:
         self.per_word_bound=self.model.bound(self.corpus)/corpus_words
 
 if __name__=='__main__':
-    n_topics=25
+    n_topics=9
     Tm=LDA_TM('LDA'+str(n_topics))
     #Tm.create_LDA_model(n_topics)
     Tm.load_existing_model()
@@ -477,9 +496,11 @@ if __name__=='__main__':
     #Tm.print_top_titles_by_topic()
     #df=Tm.find_most_frequent_authors()
     #Tm.compute_per_word_bound()
-    #Tm.plot_doc_clustering_interia()
-    #Tm.create_doc_clustering(25)
-    Tm.create_classification_from_cluster_data();
+    #Tm.plot_doc_clustering_interia(max_cluster=70)
+    #Tm.create_doc_clustering(9)
+    #hist=Tm.create_classification_from_cluster_data();
+    #Tm.plot_evolution_plots()
+    Tm.topic_evolution_by_year(1)
     
 
         

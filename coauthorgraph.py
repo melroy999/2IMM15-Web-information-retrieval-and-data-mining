@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib
 import seaborn as sns
-import atm
+import A_TM
 import findPercMatch
 
 
@@ -94,7 +94,7 @@ def computeAuthorStrength(G):
     for i in range(len(sg)):
         s=sg[i].nodes()
         l.append(len(s))
-        return AuStrength
+    return AuStrength,l
 
 
 def get_top_collabarators(Strength,a_names,top_n=10):
@@ -142,18 +142,141 @@ def create_doc_citation_matrix(df_papers):
     pickle.dump(open("citationMatrix.p","wb"))
     return m
     
+
+def plot_degree_centralty_hist(G):
+    plt.hist(list(nx.degree_centrality(G).values()))
+    plt.xlabel('Degree Centraility')
+    plt.ylabel('Count')
+    plt.title('Histogram of Authors degree centraility in NIPS dataset')
+    plt.show()
+
+def plot_betweenness_centralty_hist(G):
+    plt.hist(list(nx.betweenness_centrality(G).values()))
+    plt.xlabel('Betweenness Centraility')
+    plt.ylabel('Count')
+    plt.title('Histogram of Authors Betweenness centraility in NIPS dataset')
+    plt.show()
+    
+def matrix_plot_largest_connected_component(G):
+    largest_ccs = sorted(nx.connected_component_subgraphs(G), key=lambda x: len(x))[-1]
+    print(len(largest_ccs.nodes()))
+    h = nv.MatrixPlot(largest_ccs)
+    h.draw()
+    plt.show()
+
+def arc_plot(G):
+        # Iterate over all the nodes in G, including the metadata
+    for n, d in G.nodes(data=True):
+    
+        # Calculate the degree of each node: G.node[n]['degree']
+        G.node[n]['degree'] = nx.degree(G,n)
+        
+    # Create the ArcPlot object: a
+    a = nv.ArcPlot(G,node_order='degree')
+    
+    # Draw the ArcPlot to the screen
+    a.draw()
+    plt.show()
+
+def circos_plot(G):
+        # Iterate over all the nodes, including the metadata
+    for n, d in G.nodes(data=True):
+    
+        # Calculate the degree of each node: G.node[n]['degree']
+        G.node[n]['degree'] = nx.degree(G,n)
+    
+    # Create the CircosPlot object: c
+    c =nv.CircosPlot(G,node_order='degree')
+    
+    # Draw the CircosPlot object to the screen
+    c.draw()
+    plt.show()
+
+def circos_plot_largest_clique(G):
+        # Find the author(s) that are part of the largest maximal clique: largest_clique
+    largest_clique = sorted(nx.find_cliques(G), key=lambda x:len(x))[-1]
+    
+    # Create the subgraph of the largest_clique: G_lc
+    G_lc = G.subgraph(largest_clique)
+    
+    # Create the CircosPlot object: c
+    c = nv.CircosPlot(G_lc)
+    
+    # Draw the CircosPlot to the screen
+    c.draw()
+    plt.show()
+
+def recommendation(G):
+        # Import necessary modules
+    from itertools import combinations
+    from collections import defaultdict
+    
+    # Initialize the defaultdict: recommended
+    recommended = defaultdict(int)
+    
+    # Iterate over all the nodes in G
+    for n, d in G.nodes(data=True):
+    
+        # Iterate over all possible triangle relationship combinations
+        for n1, n2 in combinations(G.neighbors(n), 2):
+        
+            # Check whether n1 and n2 do not have an edge
+            if not G.has_edge(n1, n2):
             
+                # Increment recommended
+                recommended[(n1, n2)] += 1
     
-    
+    # Identify the top 10 pairs of users
+    all_counts = sorted(recommended.values())
+    top10_pairs = [pair for pair, count in recommended.items() if count >=5]
+    print(top10_pairs)
+    return all_counts, recommended,top10_pairs
+
 
 #model=atm.load_model()
-#G=create_Graph(df_papers,df_authors,model)
-#As=computeAuthorStrength(G)
+#n_topics=9
+#Tm=A_TM.A_TM('ATM'+str(n_topics))
+#Tm.load_existing_model()
+#    
+#G=create_Graph(Tm.df_papers,Tm.df_authors,Tm.model)
+As,l=computeAuthorStrength(G)
 #gd=get_top_authors(G,top_n=20)
-#get_top_collabarators(As,df_authors['name'].values)
-m=create_doc_citation_matrix(df_papers)
+#plot_degree_centralty_hist(G)
+#plot_betweenness_centralty_hist(G)
+#matrix_plot_largest_connected_component(G)
 
+get_top_collabarators(As,Tm.df_authors['name'].values)
+#m=create_doc_citation_matrix(df_papers)
+#arc_plot(G)
+#circos_plot(G)
+#circos_plot_largest_clique(G)
+cliques = nx.find_cliques(G)
+#print(len(list(cliques)))
+c,r,t=recommendation(G)
+#c=list(cliques)
+#k=[]
+#for i in range(len(c)):
+#    k.append(len(c[i]))
+#
+#plt.hist(k)
+#plt.xlabel('Clique Size')
+#plt.ylabel('Count')
+#plt.title('Histogram of Clique sizes')
+#plt.show()
+cnt=[]
+a1=[]
+a2=[]
+for p in t:
+    cnt.append(r[p])
+    a1.append(G.node[p[0]]['name'])
+    a2.append(G.node[p[1]]['name'])
 
+df=pd.DataFrame({'Author1':a1, 'Author2':a2,'Score':cnt})
+
+    
+    
+    
+    
     
     
     
