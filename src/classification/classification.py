@@ -140,6 +140,21 @@ def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     print(pred)
     score = metrics.accuracy_score(y_test, pred)
     print("Accuracy: ", score)
+
+    counter = collections.Counter(y_test)
+    result = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for var in range(0, len(y_test)):
+        if y_test[var] == pred[var]:
+            result[y_test[var]] += 1
+
+    print("[", end="")
+    for var in range(0, 9):
+        print(result[var], end="")
+        print("/", end="")
+        print(counter[var], end="")
+        if var != 8:
+            print(", ", end="")
+    print("] (correct/total)")
     print()
 
 
@@ -192,9 +207,9 @@ def predict_label(paper_id, indexer):
 # Execute this for training the oneVSrest Classifier with all labeled data and predict a label from a given paperID
 # print("Prediction label for a paper:", predict_label(500))
 
-# Execute this for training all the classifiers and return their accuracy
-indexer = Indexer(None)
-indexer.index_corpus("None", True)
-find_labels(indexer)
-fit_data(indexer)
-print_results()
+# Execute this for training all the classifiers and return their distribution and accuracy
+# indexer = Indexer(None)
+# indexer.index_corpus("None", True)
+# find_labels(indexer)
+# fit_data(indexer)
+# print_results()
