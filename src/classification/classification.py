@@ -1,5 +1,7 @@
 import information_retrieval.vector_space_analysis as vsa
 import warnings
+import collections
+from information_retrieval.indexer import Indexer
 from sklearn.svm import LinearSVC
 from sklearn import linear_model
 from sklearn.svm import SVC
@@ -94,6 +96,7 @@ def train_classifier(indexer):
 
 def print_results():
     X_train, X_test, y_train, y_test = train_test_split(data, ground_truth, test_size=.25, random_state=42, shuffle=True)
+    print_test_distribution(y_test)
 
     classifier = LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
                            intercept_scaling=1, loss='squared_hinge', max_iter=1000,
@@ -140,6 +143,15 @@ def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     print()
 
 
+def print_test_distribution(y_test):
+    counter = collections.Counter(y_test)
+    print()
+    print("Distribution of the test data: (", len(y_test), "items )")
+    for var in range(0, 9):
+        print(label_names[var], " = ", counter[var], " (",  '{0:.2f}'.format(counter[var]/len(y_test)*100), "%)")
+    print()
+
+
 def reset_training_data():
     global already_trained
     global onevsrest_classifier
@@ -181,6 +193,8 @@ def predict_label(paper_id, indexer):
 # print("Prediction label for a paper:", predict_label(500))
 
 # Execute this for training all the classifiers and return their accuracy
-# find_labels()
-# fit_data()
-# print_results()
+indexer = Indexer(None)
+indexer.index_corpus("None", True)
+find_labels(indexer)
+fit_data(indexer)
+print_results()
