@@ -1,5 +1,7 @@
 import information_retrieval.vector_space_analysis as vsa
 import warnings
+import collections
+from information_retrieval.indexer import Indexer
 from sklearn.svm import LinearSVC
 from sklearn import linear_model
 from sklearn.svm import SVC
@@ -94,6 +96,7 @@ def train_classifier(indexer):
 
 def print_results():
     X_train, X_test, y_train, y_test = train_test_split(data, ground_truth, test_size=.25, random_state=42, shuffle=True)
+    print_test_distribution(y_test)
 
     classifier = LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
                            intercept_scaling=1, loss='squared_hinge', max_iter=1000,
@@ -137,6 +140,30 @@ def print_pred_acc(classifier, X_train, X_test, y_train, y_test):
     print(pred)
     score = metrics.accuracy_score(y_test, pred)
     print("Accuracy: ", score)
+
+    counter = collections.Counter(y_test)
+    result = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for var in range(0, len(y_test)):
+        if y_test[var] == pred[var]:
+            result[y_test[var]] += 1
+
+    print("[", end="")
+    for var in range(0, 9):
+        print(result[var], end="")
+        print("/", end="")
+        print(counter[var], end="")
+        if var != 8:
+            print(", ", end="")
+    print("] (correct/total)")
+    print()
+
+
+def print_test_distribution(y_test):
+    counter = collections.Counter(y_test)
+    print()
+    print("Distribution of the test data: (", len(y_test), "items )")
+    for var in range(0, 9):
+        print(label_names[var], " = ", counter[var], " (",  '{0:.2f}'.format(counter[var]/len(y_test)*100), "%)")
     print()
 
 
@@ -180,7 +207,9 @@ def predict_label(paper_id, indexer):
 # Execute this for training the oneVSrest Classifier with all labeled data and predict a label from a given paperID
 # print("Prediction label for a paper:", predict_label(500))
 
-# Execute this for training all the classifiers and return their accuracy
-# find_labels()
-# fit_data()
+# Execute this for training all the classifiers and return their distribution and accuracy
+# indexer = Indexer(None)
+# indexer.index_corpus("None", True)
+# find_labels(indexer)
+# fit_data(indexer)
 # print_results()
