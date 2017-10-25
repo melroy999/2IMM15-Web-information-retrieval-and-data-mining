@@ -1049,7 +1049,6 @@ class TopicModelingFrame(Frame):
         return
 
     def CreateModel(self):
-        import TM
         n_topics = self.n_topic_field.get().strip()
         if n_topics == '':
             return
@@ -1227,7 +1226,7 @@ if __name__ == '__main__':
     gui = InterfaceRoot(root)
 
     # Create the objects we will need.
-    #indexer = Indexer(update_status)
+    indexer = Indexer(update_status)
     analyzer = None
 
     # Start the main GUI loop.
